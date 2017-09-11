@@ -5,7 +5,7 @@ app.get('/', function(req, res) {
     res.writeHead(200, {
         "Context-type" : "text/html"          
         });
-    message = (req.query && req.query.message) ? req.query.message : 'no request';
+    message = (req.query && req.query.message) ? req.query.message : ' ';
     say.speak(message);
     res.end( message);
     
