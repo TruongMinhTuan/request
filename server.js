@@ -9,7 +9,6 @@ app.get('/', function(req,res) {
         }
       else
         { 
-            res.status(200)
             say.speak(req.query.message);
             res.end();
         }        
