@@ -1,15 +1,22 @@
 var express     = require('express');
 var bodyParser  = require('body-parser');
 var app         = express();
-//var exec        = require('child_process').exec;
+var exec = require('child_process').exec;
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.post('/auto', function (req, res) {	
-    console.log(req.body.head_commit.author.name)
-    console.log(req.body.head_commit.author.email)
-    console.log(req.body.head_commit.author.username)
-	console.log('pulling code from GitHub...');
-	res.sendStatus(200);
+    console.log('mane: '+req.body.head_commit.author.name)
+    console.log('email: '+req.body.head_commit.author.email)
+    console.log('username: '+req.body.head_commit.author.username)
+    console.log('pulling code from GitHub...');
+    //-------------
+    console.log('--------------reset-----------------');
+    exec('git -C \Users\Phuong\Desktop\request reset --hard', execCallback );
+    console.log('--------------clean-----------------');
+    exec('git -C \Users\Phuong\Desktop\request clean -df', execCallback);
+    console.log('--------------pull-----------------');
+    exec('git -C \Users\Phuong\Desktop\request pull -f', execCallback);
+    res.sendStatus(200);
     res.end();
 });
 app.listen(8080);
