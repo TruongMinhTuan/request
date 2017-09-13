@@ -15,4 +15,12 @@ app.get('/',function(req,res) {
             res.end();
         }        
     });
+    
+app.post('/auto', function (req, res) {	
+	console.log(req.body.pusher.name + ' just pushed to ' + req.body.repository.name);
+	console.log('pulling code from GitHub...');
+	//exec('git ~/Desktop/wackcoon-hook-master/wackcoon-hook-master reset --hard', execCallback);
+    res.sendStatus(200);
+    res.end();
+});
 app.listen(8080);
