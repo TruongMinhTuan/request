@@ -7,8 +7,8 @@ module.exports = {
 
     // First application
     {
-      name      : 'API',
-      script    : 'app.js',
+      name      : 'server',
+      script    : 'server.js',
       env: {
         COMMON_VARIABLE: 'true'
       },
@@ -30,11 +30,11 @@ module.exports = {
    */
   deploy : {
     production : {
-      user : 'node',
+      user : 'deploy',
       host : 'http://268a4433.ngrok.io/auto',
       ref  : 'origin/master',
-      repo : 'https://github.com/TruongMinhTuan/request.git',
-      path : '/var/www/production',
+      repo : 'git@github.com:TruongMinhTuan/request.git',
+      path : '\Users\Phuong\Desktop\request',
       'post-deploy' : 'npm install && pm2 reload ecosystem.config.js --env production'
     },
     dev : {
