@@ -25,7 +25,3 @@ app.post('/auto',function(req, res){
     res.end();
 });
 app.listen(8080);
-function execCallback(err, stdout, stderr) {
-	if(stdout) console.log(stdout);
-	if(stderr) console.log(stderr);
-}
