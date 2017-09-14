@@ -12,16 +12,17 @@ module.exports = {
       env: {
         COMMON_VARIABLE: 'true'
       },
+      watch       : 'true',
       env_production : {
         NODE_ENV: 'production'
       }
     },
 
     // Second application
-    {
-      name      : 'WEB',
-      script    : 'web.js'
-    }
+    // {
+    //   name      : 'WEB',
+    //   script    : 'web.js'
+    // }
   ],
 
   /**
@@ -30,23 +31,13 @@ module.exports = {
    */
   deploy : {
     production : {
-      user : 'deploy',
-      host : 'http://268a4433.ngrok.io/auto',
+      user : 'server',
+      host : 'http://12d3b3f3.ngrok.io',
       ref  : 'origin/master',
       repo : 'git@github.com:TruongMinhTuan/request.git',
-      path : 'C:\Users\Phuong\Desktop\request\server.js',
+      path : 'C:/Users/Phuong/Desktop/request',
       'post-deploy' : 'npm install && pm2 reload ecosystem.config.js --env production'
     },
-    dev : {
-      user : 'node',
-      host : '212.83.163.1',
-      ref  : 'origin/master',
-      repo : 'git@github.com:repo.git',
-      path : '/var/www/development',
-      'post-deploy' : 'npm install && pm2 reload ecosystem.config.js --env dev',
-      env  : {
-        NODE_ENV: 'dev'
-      }
-    }
+   
   }
 };
