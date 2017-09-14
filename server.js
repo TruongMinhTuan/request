@@ -14,7 +14,7 @@ app.post('/auto',function(req, res){
     exec('git -C C:\Users\Phuong\Desktop\request reset --hard');
     exec('git -C \Users\Phuong\Desktop\request clean -df');
     exec('git -C C:\Users\Phuong\Desktop\request pull -f');
-    execCallback();
+   
     res.sendStatus(200);
     res.end();
 });
