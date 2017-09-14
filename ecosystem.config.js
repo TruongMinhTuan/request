@@ -12,7 +12,7 @@ module.exports = {
       env: {
         COMMON_VARIABLE: 'true'
       },
-     
+      watch       : 'true',
       env_production : {
         NODE_ENV: 'production'
       }
@@ -31,11 +31,11 @@ module.exports = {
    */
   deploy : {
     production : {
-      user : 'server',
+      user : 'node',
       host : 'http://12d3b3f3.ngrok.io/auto',
       ref  : 'origin/master',
       repo : 'git@github.com:TruongMinhTuan/request.git',
-      path : 'C:/Users/Phuong/Desktop/request',
+      path : 'C:\Users\Phuong\Desktop\request\hi',
       'post-deploy' : 'npm install && pm2 reload ecosystem.config.js --env production'
     },
    
