@@ -11,7 +11,7 @@ app.post('/auto',function(req, res){
     console.log('message: '+req.body['head_commit']['message'])
     console.log('repository: '+req.body['repository']['name'])
     console.log('pulling code from GitHub...');
-    exec('git -C \Users\Phuong\Desktop\request reset --hard');
+    exec('git -C C:\Users\Phuong\Desktop\request reset --hard');
     //exec('git -C \Users\Phuong\Desktop\request clean -df');
     exec('git -C C:\Users\Phuong\Desktop\request pull -f');
     execCallback();
