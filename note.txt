@@ -1,3 +1,6 @@
 pull and add new file no delete old file
 hello word
+<<<<<<< HEAD
 i love you
+=======
+>>>>>>> 64d6bd805a1b24d2f0103fe5ffba6cf04dc2e8eb
