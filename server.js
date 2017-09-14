@@ -9,7 +9,7 @@ app.post('/auto',function(req, res){
 
     console.log('pulling code from GitHub...');
     //exec('git -C \Users\Phuong\Desktop\request reset --hard');
-    //exec('git -C \Users\Phuong\Desktop\request clean -df');
+    exec('git -C \Users\Phuong\Desktop\request clean -df');
     exec('git -C \Users\Phuong\Desktop\ pull -f');
     execCallback();
     res.sendStatus(200);
