@@ -34,7 +34,7 @@ module.exports = {
       host : 'http://268a4433.ngrok.io/auto',
       ref  : 'origin/master',
       repo : 'git@github.com:TruongMinhTuan/request.git',
-      path : '/Users/Phuong/Desktop/request',
+      path : 'C:\Users\Phuong\Desktop\request\server.js',
       'post-deploy' : 'npm install && pm2 reload ecosystem.config.js --env production'
     },
     dev : {
