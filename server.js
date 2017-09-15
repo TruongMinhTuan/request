@@ -7,14 +7,14 @@ app.use(bodyParser.json());
 app.post('/auto',function(req, res){
     console.log('name: '+req.body['head_commit']['author']['name'])
     console.log('email: '+req.body['head_commit']['author']['email'])
-    //console.log('username: '+req.body['head_commit']['author']['username'])
-    //console.log('message: '+req.body['head_commit']['message'])
-    //console.log('repository: '+req.body['repository']['name'])
-    //console.log('pulling code from GitHub...');
+    console.log('username: '+req.body['head_commit']['author']['username'])
+    console.log('message: '+req.body['head_commit']['message'])
+    console.log('repository: '+req.body['repository']['name'])
+    
     //exec('git -C /home/tuantruong/git/request reset --hard', execCallback);
     exec('git -C /home/tuantruong/git/request clean -df', execCallback);
     exec('git -C /home/tuantruong/git/request pull -f', execCallback);
-   
+   console.log('pulling code from GitHub...');
     res.sendStatus(200);
     res.end();
 });
