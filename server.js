@@ -12,14 +12,14 @@ app.post('/auto',function(req, res){
     console.log('repository: '+req.body['repository']['name'])
     
     //exec('git -C /home/tuantruong/git/request reset --hard', execCallback);
-    exec('git -C /home/tuantruong/git/request clean -df', execCallback);
-    exec('git -C /home/tuantruong/git/request pull -f', execCallback);
-   console.log('pulling code from GitHub...');
+    exec('git -C /home/tuantruong/git/request clean -df')//, execCallback);
+    exec('git -C /home/tuantruong/git/request pull -f')//, execCallback);
+    console.log('pulling code from GitHub...');
     res.sendStatus(200);
     res.end();
 });
 app.listen(8080);
-function execCallback(err, stdout, stderr) {
-	if(stdout) console.log(stdout);
-	if(stderr) console.log(stderr);
-}
+// function execCallback(err, stdout, stderr) {
+// 	if(stdout) console.log(stdout);
+// 	if(stderr) console.log(stderr);
+// }
