@@ -12,7 +12,7 @@ app.post('/auto',function(req, res){
     //console.log('repository: '+req.body['repository']['name'])
     //console.log('pulling code from GitHub...');
     //exec('git -C /home/tuantruong/git/request reset --hard');
-    // exec('git -C /home/stuantruong/git/request clean -df');
+    // exec('git -C /home/tuantruong/git/request clean -df');
     exec('git -C /home/tuantruong/git/request pull -f');
    
     res.sendStatus(200);
