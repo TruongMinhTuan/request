@@ -23,7 +23,7 @@ app.post('/auto',function(req, res){
    var exec = require('child_process').exec;
    
   
-    exec("git /home/pi/request pull -f", puts)   
+    exec("git pull -f", puts)   
     res.sendStatus(200);
     res.end();    
 });
