@@ -20,7 +20,7 @@ app.post('/auto',function(req, res){
     console.log('name: '+req.body['head_commit']['author']['name'])
     console.log('message: '+req.body['head_commit']['message'])
  
-    exec('gti pull -f', (err, stdout, stderr) => {
+    exec('git pull -f', (err, stdout, stderr) => {
         if (err) {
           // node couldn't execute the command
           return;
