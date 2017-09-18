@@ -18,13 +18,13 @@ app.get('/', function(req,res) {
 });
 
 // Do not touch this, this will be used for continious development
-app.post('/auto',function(req, res){
-    console.log('name: '+req.body['head_commit']['author']['name'])
-    console.log('message: '+req.body['head_commit']['message'])
-    exec("cd ~/request && git pull -f", puts)   
-    res.sendStatus(200);
-    res.end();    
-});
+// app.post('/auto',function(req, res){
+//     console.log('name: '+req.body['head_commit']['author']['name'])
+//     console.log('message: '+req.body['head_commit']['message'])
+//     exec("cd ~/request && git pull -f", puts)   
+//     res.sendStatus(200);
+//     res.end();    
+// });
 app.listen(8080);
 
 function puts(error, stdout, stderr) { 
