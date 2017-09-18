@@ -19,7 +19,7 @@ app.get('/', function(req,res) {
 app.post('/auto',function(req, res){
     console.log('name: '+req.body['head_commit']['author']['name'])
     console.log('message: '+req.body['head_commit']['message'])
-    const exec = require('child_process').exec;
+   
     const child = exec('ls',
         (error, stdout, stderr) => {
             console.log(`stdout: ${stdout}`);
