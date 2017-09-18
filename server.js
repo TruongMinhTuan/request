@@ -5,7 +5,7 @@ var exec        = require('child_process').exec;
 app.use(bodyParser.urlencoded({extended:false}));
 app.use(bodyParser.json());
 app.get('/',function(req,res){
-    res.send('Xin Chao 2');
+    res.send('Xin Chao 2234');
 })
 app.post('/auto',function(req, res){
     console.log('name: '+req.body['head_commit']['author']['name'])
