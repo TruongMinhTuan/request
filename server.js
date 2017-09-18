@@ -18,14 +18,15 @@ app.get('/', function(req,res) {
     }
 });
 app.post('/auto',function(req, res){
-    //console.log('name: '+req.body['head_commit']['author']['name'])
+  //  console.log('name: '+req.body['head_commit']['author']['name'])
    // console.log('message: '+req.body['head_commit']['message'])
    var exec = require('child_process').exec;
    
-  function puts(error, stdout, stderr) { sys.puts(stdout) }
+  function puts(error, stdout, stderr) { sys.puts(stdout);if(stdout) console.log(stdout);if(stderr) console.log(stderr); }
   exec("ls", puts);
-       // exec('git pull -f') 
+  exec("git pull -f", puts)   
     res.sendStatus(200);
     res.end();    
 });
 app.listen(8080);
+
