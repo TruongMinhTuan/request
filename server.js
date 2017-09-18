@@ -9,7 +9,7 @@ app.get('/',function(req,res){
 })
 app.post('/auto',function(req, res){
    // if(req.body=='' ||req.body== null){
-       Console.log(req.body)
+     //  Console.log(req.body)
         console.log('name: '+req.body['head_commit']['author']['name'])
         console.log('message: '+req.body['head_commit']['message'])
         exec('git -C /home/tuantruong/git/request pull -f')
