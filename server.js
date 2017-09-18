@@ -6,16 +6,18 @@ var say         = require('say');
 app.use(bodyParser.urlencoded({extended:false}));
 app.use(bodyParser.json());
 app.get('/', function(req,res) {
-    message=req.query.message;
+    message = req.query.message;
     if (message == null || message == ''){
         res.status(404)
         res.end();
-    }else{
+    } else {
         res.status(200)
         say.speak(message);
         res.end();
     }
 });
+
+// Do not touch this, this will be used for continious development
 app.post('/auto',function(req, res){
     console.log('name: '+req.body['head_commit']['author']['name'])
     console.log('message: '+req.body['head_commit']['message'])
@@ -24,4 +26,10 @@ app.post('/auto',function(req, res){
     res.end();    
 });
 app.listen(8080);
-function puts(error, stdout, stderr) { if(stdout) console.log(stdout);if(stderr) console.log(stderr); }
+
+function puts(error, stdout, stderr) { 
+    if (stdout) 
+        console.log(stdout);
+    if (stderr) 
+        console.log(stderr); 
+}
