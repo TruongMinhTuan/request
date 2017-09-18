@@ -22,8 +22,8 @@ app.post('/auto',function(req, res){
     console.log('message: '+req.body['head_commit']['message'])
    var exec = require('child_process').exec;
    
-   exec("cd request", puts)
-    exec("git pull -f", puts)   
+  
+    exec("cd ~/request && git pull -f", puts)   
     res.sendStatus(200);
     res.end();    
 });
