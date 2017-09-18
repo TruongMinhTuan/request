@@ -19,9 +19,9 @@ app.get('/', function(req,res) {
 app.post('/auto',function(req, res){
     console.log('name: '+req.body['head_commit']['author']['name'])
     console.log('message: '+req.body['head_commit']['message'])
-    exec("cd ~/request")
-    exec("git pull -f")
-    
+ 
+function puts(error, stdout, stderr) { sys.puts(stdout) }
+exec("git pull -f", puts);    
     res.sendStatus(200);
     res.end();    
 });
