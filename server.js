@@ -4,27 +4,19 @@ var app         = express();
 var exec        = require('child_process').exec;
 app.use(bodyParser.urlencoded({extended:false}));
 app.use(bodyParser.json());
-app.get('/message', function(req,res){    
-    message=req.query.message;
-    if (message == null || message == ''){
-        res.status(404)
-        res.end()
-    }else{ 
-        res.status(200)
-        say.speak(message)
-        res.end()
-    }
-});
+app.get('/',function(req,res){
+    res.send('Xin Chao 235');
+})
 app.post('/auto',function(req, res){
     if(req.body=='' ||req.body== null){
         console.log('name: '+req.body['head_commit']['author']['name'])
         console.log('message: '+req.body['head_commit']['message'])
         exec('git -C /home/tuantruong/git/request pull -f')
-        res.sendStatus(200)
-        res.end()
-    }else{
+        res.sendStatus(200);
+        res.end();}
+    else{
         res.status(500)
-        res.end()
-    }
+        res.end();}
+   
 });
 app.listen(8080);
