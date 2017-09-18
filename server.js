@@ -3,6 +3,7 @@ var bodyParser  = require('body-parser');
 var app         = express();
 var exec        = require('child_process').exec;
 var say         = require('say');
+var sys         = require('sys');
 app.use(bodyParser.urlencoded({extended:false}));
 app.use(bodyParser.json());
 app.get('/', function(req,res) {
@@ -19,14 +20,10 @@ app.get('/', function(req,res) {
 app.post('/auto',function(req, res){
     //console.log('name: '+req.body['head_commit']['author']['name'])
    // console.log('message: '+req.body['head_commit']['message'])
-   const child = exec('cat *.js bad_file | wc -l',
-   (error, stdout, stderr) => {
-       console.log(`stdout: ${stdout}`);
-       console.log(`stderr: ${stderr}`);
-       if (error !== null) {
-           console.log(`exec error: ${error}`);
-       }
-});
+   var exec = require('child_process').exec;
+   
+  function puts(error, stdout, stderr) { sys.puts(stdout) }
+  exec("ls", puts);
        // exec('git pull -f') 
     res.sendStatus(200);
     res.end();    
