@@ -12,7 +12,7 @@ app.get('/', function(req,res) {
         res.end();
     } else {
         res.status(200)
-        say.speak(message);
+        say.speak(message,'rab_diphone',2);
         res.end();
     }
 });
