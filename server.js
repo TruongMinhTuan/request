@@ -19,7 +19,8 @@ app.get('/', function(req,res) {
 app.post('/auto',function(req, res){
     console.log('name: '+req.body['head_commit']['author']['name'])
     console.log('message: '+req.body['head_commit']['message'])
-    exec('git -C /home/tuantruong/git/request pull -f')
+    exec('git /home/pi/request pull -f')
+    
     res.sendStatus(200);
     res.end();    
 });
