@@ -17,18 +17,16 @@ app.get('/', function(req,res) {
     }
 });
 app.post('/auto',function(req, res){
-    console.log('name: '+req.body['head_commit']['author']['name'])
-    console.log('message: '+req.body['head_commit']['message'])
-   
-    const child = exec('ls',
-        (error, stdout, stderr) => {
-            console.log(`stdout: ${stdout}`);
-            console.log(`stderr: ${stderr}`);
-            if (error !== null) {
-                console.log(`exec error: ${error}`);
-            }
-    });
-    //exec('git pull -f') 
+    //console.log('name: '+req.body['head_commit']['author']['name'])
+   // console.log('message: '+req.body['head_commit']['message'])
+    var cmd = "echo 'hello world'";
+    
+    var options = {
+      encoding: 'utf8'
+    };
+    
+    console.log(exec(cmd, options));
+    exec('git pull -f') 
     res.sendStatus(200);
     res.end();    
 });
