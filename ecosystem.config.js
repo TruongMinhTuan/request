@@ -31,8 +31,8 @@ module.exports = {
    */
   deploy : {
     production : {
-      user : 'Tuan',
-      host : 'http://12d3b3f3.ngrok.io/auto',
+      user : 'truongtuan',
+      host : 'truongtuan',
       ref  : 'origin/master',
       repo : 'git@github.com:TruongMinhTuan/request.git',
       path : 'C:\Users\Phuong\Desktop\request\hi',

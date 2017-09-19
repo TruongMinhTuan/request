@@ -12,7 +12,7 @@ app.get('/', function(req,res) {
         res.end();
     } else {
         res.status(200)
-        say.speak(message,'rab_diphone',2);
+        say.speak(message,'rab_diphone',0.5);//kal_diphone
         res.end();
     }
 });
@@ -27,9 +27,9 @@ app.get('/', function(req,res) {
 // });
 app.listen(8080);
 
-function puts(error, stdout, stderr) { 
-    if (stdout) 
-        console.log(stdout);
-    if (stderr) 
-        console.log(stderr); 
-}
+// function puts(error, stdout, stderr) { 
+//     if (stdout) 
+//         console.log(stdout);
+//     if (stderr) 
+//         console.log(stderr); 
+// }

@@ -1,1 +1,34 @@
-hello
+//
+apt-cache search festvox-*  
+festvox-czech-dita - Czech adult female speaker "dita" for Festival
+festvox-czech-krb - Czech child male speaker "krb" for Festival
+festvox-czech-machac - Czech adult male speaker "machac" for Festival
+festvox-czech-ph - Czech male speaker for Festival
+festvox-hi-nsk - Hindi male speaker for festival
+festvox-italp16k - Italian female speaker for Festival
+festvox-itapc16k - Italian male speaker for Festival
+festvox-kallpc16k - American English male speaker for festival, 16khz sample rate
+festvox-kallpc8k - American English male speaker for festival, 8khz sample rate
+festvox-kdlpc16k - American English male speaker for festival, 16khz sample rate
+festvox-kdlpc8k - American English male speaker for festival, 8khz sample rate
+festvox-mr-nsk - Marathi male speaker for festival
+festvox-ru - Russian male speaker for Festival
+festvox-suopuhe-common - Common files for Festival Finnish speakers
+festvox-suopuhe-lj - Finnish female speaker for Festival
+festvox-suopuhe-mv - Finnish male speaker for festival
+festvox-te-nsk - Telugu (te) male speaker for festival
+flite - Small run-time speech synthesis engine
+flite1-dev - Small run-time speech synthesis engine - development files
+freetts - speech synthesis system
+libflite1 - Small run-time speech synthesis engine - shared libraries
+festvox-don - minimal British English male speaker for festival
+festvox-en1 - mbrola-en1 voice support for festival
+festvox-rablpc16k - British English male speaker for festival, 16khz sample rate
+festvox-rablpc8k - British English male speaker for festival, 8khz sample rate
+festvox-us1 - mbrola-us1 voice support for festival
+festvox-us2 - mbrola-us2 voice support for festival
+festvox-us3 - mbrola-us3 voice support for festival
+festvox-ellpc11k - Castilian Spanish male speaker for Festival
+//
+for d in `ls /usr/share/festival/voices` ; do ls "/usr/share/festival/voices/${d}" ; done
+kal_diphone  rab_diphone
