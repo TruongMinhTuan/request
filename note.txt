@@ -33,4 +33,3 @@ festvox-ellpc11k - Castilian Spanish male speaker for Festival
 for d in `ls /usr/share/festival/voices` ; do ls "/usr/share/festival/voices/${d}" ; done
 kal_diphone  rab_diphone
 //
-heeloo
