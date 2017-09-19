@@ -8,7 +8,7 @@ app.get('/', function(req,res) {
         res.end();
     } else {
         res.status(200)
-        say.speak(message,'rab_diphone',0.5);//kal_diphone
+        say.speak(message,'kal_diphone',1);//kal_diphone ,rab_diphone
         res.end();
     }
 });
