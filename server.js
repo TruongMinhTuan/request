@@ -1,6 +1,7 @@
 var express     = require('express');
 var app         = express();
 var say         = require('say');
+var mongoose    = require('mongoose');
 app.get('/', function(req,res) {
     var message = req.query.message;
     if (message == null || message == '') {
