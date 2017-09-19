@@ -3,7 +3,7 @@ var app         = express();
 var say         = require('say');
 app.get('/', function(req,res) {
     var message = req.query.message;
-    if (message == null || message == ''){
+    if (message == null || message == '') {
         res.status(404)
         res.end();
     } else {
