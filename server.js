@@ -8,7 +8,7 @@ app.get('/', function(req,res) {
         res.end();
     } else {
         res.status(200)
-        say.speak(message);//voice_kal_diphone ,voice_rab_diphone ,voice_lp_diphone,voice_lp_diphone
+        say.speak(message,'voice_lp_diphone');//voice_kal_diphone ,voice_rab_diphone ,voice_lp_diphone,voice_lp_diphone
         res.end();
     }
 });
