@@ -31,11 +31,11 @@ module.exports = {
    */
   deploy : {
     production : {
-      user : 'truongtuan',
-      host : 'truongtuan',
+      user : 'pi',
+      host : '10.93.98.2',
       ref  : 'origin/master',
-      repo : 'git@github.com:TruongMinhTuan/request.git',
-      path : 'C:\Users\Phuong\Desktop\request\hi',
+      repo : 'https://github.com/TruongMinhTuan/request.git',
+      path : '/home/pi/request',
       'post-deploy' : 'npm install && pm2 reload ecosystem.config.js --env production'
     },
    
