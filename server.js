@@ -1,17 +1,20 @@
-var express     = require('express');
-var app         = express();
-var say         = require('say');
-var mongoose    = require('mongoose');
+var express     = require('express')
+var app         = express()
+var say         = require('say')
+var mongoose    = require('mongoose')
+var database    = require('./database')
+database.connect('mongodb://localhost/mytestdata')
 app.get('/', function(req,res) {
-    var message = req.query.message;
-    if (message == null || message == '') {
+    var message = req.query.message
+    var createdAt = req.query.createdAt
+    if (createdAt ==null || createdAt == ''|| message == null || message == '') {
         res.status(404)
-        res.end();
+        res.end()
     } else {
+        database.add(message,createdAt)
+        say.speak(message);
         res.status(200)
-        say.speak(message,'voice_kal_diphone');//2-coicehy_fi_mv_diphone,1-voice_kal_diphone ,voice_rab_diphone ,voice_lp_diphone,voice_lp_diphone
-        res.end();
+        res.end()
     }
 });
-app.listen(8080);
-//
+app.listen(8080)
