@@ -1,20 +1,28 @@
-var express     = require('express')
+var express     = require("express")
 var app         = express()
+var orm         = require("orm")
 var say         = require('say')
-var mongoose    = require('mongoose')
-var database    = require('./database')
-database.connect('mongodb://localhost/mytestdata')
+app.listen(8080)
+app.use(orm.express('mongodb://localhost/mytestdata', {
+    define: function (db, models, next) {
+        models.message = db.define("messages", { 
+            message:String,
+            createdAt:String
+        })
+        next()
+    }
+}))
 app.get('/', function(req,res) {
-    var message = req.query.message
-    var createdAt = req.query.createdAt
-    if (createdAt ==null || createdAt == ''|| message == null || message == '') {
+    if (req.query.createdAt ==null || req.query.createdAt== ''|| req.query.message == null || req.query.message == '') {
         res.status(404)
         res.end()
     } else {
-        database.add(message,createdAt)
-        say.speak(message);
+        req.models.message.createAsync({message:req.query.message,createdAt:req.query.createdAt})
+        say.speak(req.query.message)
         res.status(200)
         res.end()
-    }
-});
-app.listen(8080)
+    } 
+})
+
+
+
