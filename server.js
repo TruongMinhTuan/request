@@ -1,7 +1,7 @@
 var express     = require("express")
 var app         = express()
 var orm         = require("orm")
-var say         = require('say')
+var say         = require("say")
 app.listen(8080)
 app.use(orm.express('mysql://root:root@localhost/mytestdata', {
     define: function (db, models, next) {
