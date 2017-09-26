@@ -36,7 +36,7 @@ module.exports = {
       ref  : 'origin/master',
       repo : 'https://github.com/TruongMinhTuan/request.git',
       path : '/home/pi/request',
-      'post-deploy' : 'npm install && pm2 reload ecosystem.config.js --env production'
+      'post-deploy' : 'pm2 reload ecosystem.config.js --env production'
     },
    
   }
