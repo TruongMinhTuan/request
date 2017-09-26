@@ -19,6 +19,7 @@ app.get('/', function(req,res) {
     } else {
         req.models.message.createAsync({message:req.query.message,createdAt:req.query.createdAt})
         say.speak(req.query.message)
+        res.send(req.query.message +req.query.createdAt)
         res.status(200)
         res.end()
     } 
