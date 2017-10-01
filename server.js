@@ -1,7 +1,9 @@
-var express     = require("express")
-var app         = express()
-var orm         = require("orm")
-var say         = require("say")
+const express     = require("express")
+const app         = express()
+const orm         = require("orm")
+const say         = require("say")
+var messageArr=[]
+isSpeaking = false
 app.listen(8080)
 app.use(orm.express('mysql://root:root@localhost/mytestdata', {
     define: function (db, models, next) {
@@ -17,13 +19,31 @@ app.get('/', function(req,res) {
         res.status(404)
         res.end()
     } else {
-        req.models.message.createAsync({message:req.query.message,createdAt:req.query.createdAt})
-        say.speak(req.query.message)
-        res.send(req.query.message +req.query.createdAt)
+        //req.models.message.createAsync({message:req.query.message,createdAt:req.query.createdAt})
+        messageArr.push(req.query.message)
+        delay(req.query.message)
         res.status(200)
         res.end()
     } 
 })
-
-
-
+function delay(message){
+    setTimeout(function() {
+        if(isSpeaking){
+            delay(message) 
+        } else {   
+            talk(messageArr[0])
+            messageArr.shift()
+        }
+    }, 1000)
+}
+function talk(message){
+    isSpeaking = true
+    say.speak(message, 'Good News', 0.75, (err) => {
+        if (err) { 
+            isSpeaking=false
+            return console.error(err)
+        }                    
+        isSpeaking=false
+        console.log('Speak .....'+message)
+      }) 
+}
