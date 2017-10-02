@@ -4,7 +4,7 @@ const orm         = require("orm")
 const say         = require("say")
 var messageArr=[]
 isSpeaking = false
-app.listen(8080)
+app.listen(8081)
 app.use(orm.express('mysql://root:root@localhost/mytestdata', {
     define: function (db, models, next) {
         models.message = db.define("messages", { 
