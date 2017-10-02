@@ -1,0 +1,12 @@
+// Initially
+isSpeaking = false
+
+// Received a request
+ // sng = true, delay
+ 
+ // Check if is 2 consecutive request
+   // If yes, delay
+   // Else, set isSpeaking = true, and say
+   isSpeaking = true
+    // If finished speaking, isSpeaking = false
+    isSpeaking = false

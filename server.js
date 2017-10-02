@@ -38,7 +38,7 @@ function delay(message){
 }
 function talk(message){
     isSpeaking = true
-    say.speak(message, 'Good News', 0.75, (err) => {
+    say.speak(message,(err) => {
         if (err) { 
             isSpeaking=false
             return console.error(err)
