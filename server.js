@@ -38,7 +38,7 @@ function delay(message){
 }
 function talk(message){
     isSpeaking = true
-    say.speak(message, 'Good News', 1, (err) => {
+    say.speak(message, 'voice_kal_diphone', 1, (err) => {
         if (err) { 
             isSpeaking=false
             return console.log(err)
