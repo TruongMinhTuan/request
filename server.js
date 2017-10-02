@@ -4,16 +4,16 @@ const orm         = require("orm")
 const say         = require("say")
 var messageArr=[]
 isSpeaking = false
-app.listen(8085)
+app.listen(8080)
 app.use(orm.express('mysql://root:root@localhost/mytestdata', {
     define: function (db, models, next) {
         models.message = db.define("messages", { 
             message:String,
             createdAt:String
         })
+        next()
     }
 }))
-
 app.get('/', function(req,res) {
     if (req.query.createdAt ==null || req.query.createdAt== ''|| req.query.message == null || req.query.message == '') {
         res.status(404)
@@ -38,10 +38,10 @@ function delay(message){
 }
 function talk(message){
     isSpeaking = true
-    say.speak(message,(err) => {
+    say.speak(message, 'Good News', 1, (err) => {
         if (err) { 
             isSpeaking=false
-            return console.error(err)
+            return console.log(err)
         }                    
         isSpeaking=false
         console.log('Speak .....'+message)
