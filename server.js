@@ -12,7 +12,7 @@ app.use(orm.express('mysql://root:root@localhost/mytestdata', {
     define: function (db, models, next) {
         models.message = db.define("messages", {
             message: String,
-            createdAt: String
+            createdAt: Date
         })
         next()
     }
