@@ -7,8 +7,8 @@ let messageCount = 0
 let isSpeaking = false
 
 app.listen(8080)
-app.use(orm.express('mysql://root:root@localhost/mytestdata', {
-//app.use(orm.express('mongodb://localhost/mytestdata', {
+//app.use(orm.express('mysql://root:root@localhost/mytestdata', {
+app.use(orm.express('mongodb://localhost/mytestdata', {
     define: function (db, models, next) {
         models.message = db.define("messages", {
             message: String,
