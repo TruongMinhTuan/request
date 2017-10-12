@@ -1,4 +1,8 @@
-FROM ubuntu:16.04
+#FROM ubuntu:16.04
+#FROM armv7/armhf-ubuntu
+
+#FROM armv7/armhf-debian
+FROM resin/rpi-raspbian:jessie
 
 RUN apt-get update 
 RUN apt-get install curl -y
