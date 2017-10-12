@@ -1,8 +1,11 @@
 
 version: '2'
 services:
-  web:
-    build: .
+  mongo:
+    image: mongo
+    restart: always
+    env_file: 
+      - variables.env
     volumes:
       - ./:/usr/src/app
     ports:

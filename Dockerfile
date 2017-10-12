@@ -1,9 +1,8 @@
-FROM ubuntu:16.04
 #FROM armv7/armhf-ubuntu
 
 #FROM armv7/armhf-debian
 #FROM resin/rpi-raspbian:jessie
-
+FROM keithf/ubuntu-16.04-armhf
 RUN apt-get update 
 RUN apt-get install curl -y
 RUN curl -sL https://deb.nodesource.com/setup_8.x -o nodesource_setup.sh
