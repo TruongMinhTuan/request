@@ -56,7 +56,7 @@ function delay(message){
 function talk(message) {
     if(messageCount!=0) {
         isSpeaking = true//cmu_us_clb_arctic_clunits//cmu_us_bdl_arctic_clunits
-        say.speak(message,'cmu_us_bdl_arctic_clunits', 1, (err) => {
+        say.speak(message,'voice_cmu_us_bdl_arctic_clunits', 1, (err) => {
             if (err) {
                 isSpeaking = false
                 return console.log(err)

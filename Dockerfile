@@ -1,8 +1,8 @@
-#FROM ubuntu:16.04
+FROM ubuntu:16.04
 #FROM armv7/armhf-ubuntu
 
 #FROM armv7/armhf-debian
-FROM resin/rpi-raspbian:jessie
+#FROM resin/rpi-raspbian:jessie
 
 RUN apt-get update 
 RUN apt-get install curl -y
@@ -15,6 +15,8 @@ RUN apt-get install wget
 RUN apt-get install bzip2
 RUN mkdir cmu_tmp && cd cmu_tmp/ && wget -c http://www.speech.cs.cmu.edu/cmu_arctic/packed/cmu_us_bdl_arctic-0.95-release.tar.bz2 && wget -c http://www.speech.cs.cmu.edu/cmu_arctic/packed/cmu_us_clb_arctic-0.95-release.tar.bz2 && for t in `ls cmu_*` ; do tar xf $t ; done && rm *.bz2 && mkdir -p /usr/share/festival/voices/english/ && mv * /usr/share/festival/voices/english/ 
 RUN cd /usr/share/festival/voices/english && mv "/usr/share/festival/voices/english/cmu_us_bdl_arctic" "/usr/share/festival/voices/english/cmu_us_bdl_arctic_clunits" && mv "/usr/share/festival/voices/english/cmu_us_clb_arctic" "/usr/share/festival/voices/english/cmu_us_clb_arctic_clunits"
+
+RUN apt-get install avahi-utils -y
 
 RUN for d in `ls /usr/share/festival/voices` ; do ls "/usr/share/festival/voices/${d}" ; done
 WORKDIR /usr/src/app
