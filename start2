@@ -1,0 +1,4 @@
+#!/bin/bash
+COMMAND=" pm2 start server.js --watch --no-daemon"
+
+$COMMAND

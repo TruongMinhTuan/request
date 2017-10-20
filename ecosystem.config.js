@@ -31,8 +31,8 @@ module.exports = {
    */
   deploy : {
     production : {
-      user : 'pi',
-      host : '10.93.98.2',
+      user : 'tuantruong',
+      host : ['0.0.0.0','localhost'],
       ref  : 'origin/master',
       repo : 'https://github.com/TruongMinhTuan/request.git',
       path : '/home/pi/request',

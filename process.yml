@@ -1,0 +1,8 @@
+apps:
+  - script   : 'app.js'
+    name     : 'APP'
+    exec_mode: 'cluster'
+    instances: 4
+  - script   : 'server.js'
+  - watch    : 'true'
+	
