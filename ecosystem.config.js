@@ -32,7 +32,7 @@ module.exports = {
   deploy : {
     production : {
       user : 'tuantruong',
-      host : ['0.0.0.0','localhost'],
+      host : ['0.0.0.0','localhost','10.93.98.2'],
       ref  : 'origin/master',
       repo : 'https://github.com/TruongMinhTuan/request.git',
       path : '/home/pi/request',
