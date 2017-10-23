@@ -1,12 +1,26 @@
-
 version: '2'
 services:
-  mongo:
-    image: mongo
+   mongo:
+    image: truongvanminhtuan/arm-mongo:v1
     restart: always
-    env_file: 
-      - variables.env
+    environment:
+      - AUTH=no
+    network_mode: host
     volumes:
-      - ./:/usr/src/app
+      - /home/pi/docker/mongodata:/data:rw
+    ports:
+      - "27017:27017"
+   voice:
+    image: truongvanminhtuan/arm-voice:v3
+    depends_on:
+      - mongo
+    network_mode: host
+    devices:
+      - /dev/snd
+    volumes:
+      - /home/pi/docker/request:/usr/src/app:rw
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /run/dbus/:/run/dbus/:rw
+      - /dev/shm:/dev/shm
     ports:
       - "49160:8080"

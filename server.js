@@ -62,7 +62,7 @@ function talk(message) {
                 return console.log(err)
             }
             isSpeaking = false
-            console.log('Speak .....' + message+'this is a new code')
+            console.log('Speak .....' + message+' this is a new code')
         })
     }
 }
