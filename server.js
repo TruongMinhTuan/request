@@ -8,30 +8,30 @@ let isSpeaking = false
 
 app.listen(8080)
 //app.use(orm.express('mysql://root:root@localhost/mytestdata', {
-// app.use(orm.express('mongodb://localhost/mytestdata', {
-//     define: function (db, models, next) {
-//         models.message = db.define("messages", {
-//             message: String,
-//             createdAt: Date
-//         })
-//         next()
-//     }
-// }))
+app.use(orm.express('mongodb://localhost/mytestdata', {
+    define: function (db, models, next) {
+        models.message = db.define("messages", {
+            message: String,
+            createdAt: Date
+        })
+        next()
+    }
+}))
 
 app.get('/', function(req,res) {
     if (req.query.message == null || req.query.message == '') {
         res.status(400)
         res.end()
     } else {
-        // req.models.message.createAsync(
-        //     {
-        //         message:req.query.message,
-        //         createdAt:req.query.createdAt
-        //     },
-        //     function(err) {
-        //         if (err) throw err 
-        //     }
-        // )
+        req.models.message.createAsync(
+            {
+                message:req.query.message,
+                createdAt:req.query.createdAt
+            },
+            function(err) {
+                if (err) throw err 
+            }
+        )
         messageCount++
         delay(req.query.message)
         res.status(200)
