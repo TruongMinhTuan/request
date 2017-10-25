@@ -45,10 +45,10 @@ function delay(message){
         if(isSpeaking){
             delay(message)
         } else {
-            if(messageCount == 1)
-            talk(`${messageCount}`)
-            els
-            talk(`${messageCount}`)
+            if (messageCount == 1)
+                talk(`${messageCount}`)
+            else
+                talk(`${messageCount}`)
             messageCount = 0
         }
     }, 1000)
