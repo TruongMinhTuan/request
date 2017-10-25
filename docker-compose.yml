@@ -1,13 +1,13 @@
 version: '2'
 services:
    mongo:
-    image: truongvanminhtuan/arm-mongo:v1
+    image: dwagstaff/mongodb-armhfp
     restart: always
     environment:
       - AUTH=no
     network_mode: host
     volumes:
-      - /home/pi/docker/mongodata:/data:rw
+      - /home/pi/data:/data:rw
     ports:
       - "27017:27017"
    voice:
