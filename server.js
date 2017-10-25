@@ -46,9 +46,9 @@ function delay(message){
             delay(message)
         } else {
             if(messageCount == 1)
-            talk('you had '+ messageCount +' order')
-            else
-            talk('you had '+ messageCount +' orders')
+            talk(`${messageCount}`)
+            els
+            talk(`${messageCount}`)
             messageCount = 0
         }
     }, 1000)
