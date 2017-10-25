@@ -8,6 +8,7 @@ let isSpeaking = false
 
 app.listen(8080)
 //app.use(orm.express('mysql://root:root@localhost/mytestdata', {
+    //mongodb://root:root@localhost/mytestdata
 app.use(orm.express('mongodb://0.0.0.0/mytestdata', {
     define: function (db, models, next) {
         models.message = db.define("messages", {
@@ -62,7 +63,7 @@ function talk(message) {
                 return console.log(err)
             }
             isSpeaking = false
-            console.log('Speak .....' + message+' now')
+            console.log('Speak .....' + message)
         })
     }
 }

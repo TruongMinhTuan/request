@@ -1,7 +1,7 @@
 version: '2'
 services:
    mongo:
-    image: dwagstaff/mongodb-armhfp
+    image: dwagstaff/mongodb-armhfp:latest
     restart: always
     environment:
       - AUTH=no
