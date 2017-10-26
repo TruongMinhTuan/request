@@ -34,7 +34,7 @@ app.get('/', function(req,res) {
             }
         )
         messageCount++
-        delay(req.query.message)
+        //delay(req.query.message)
         res.status(200)
         res.end()
     }
