@@ -9,7 +9,8 @@ let isSpeaking = false
 app.listen(8080)
 //app.use(orm.express('mysql://root:root@localhost/mytestdata', {
     //mongodb://root:root@localhost/mytestdata
-app.use(orm.express('mongodb://0.0.0.0/mytestdata', {
+//app.use(orm.express('mongodb://0.0.0.0/mytestdata', {
+app.use(orm.express('mongodb://root:root123@localhost/sample', {
     define: function (db, models, next) {
         models.message = db.define("messages", {
             message: String,
@@ -34,7 +35,7 @@ app.get('/', function(req,res) {
             }
         )
         messageCount++
-        //delay(req.query.message)
+        delay(req.query.message)
         res.status(200)
         res.end()
     }
