@@ -10,28 +10,16 @@
 const extend = require('extend');
 const bluebird = require('bluebird');
 const setting = require('config/mobile-settings');
-const request = require('request');
-const _ = require('lodash');
 const AirTableModel = require('api/models/AirTable.js');
-const shuffle = require('knuth-shuffle').knuthShuffle;
-const slacker = require('modules/slacker-order');
 const utils = require('modules/utils');
-const recipesModule = extend(true, {}, require('modules/recipes'));
-const collectionsModule = extend(true, {}, require('modules/collections'));
-const groupsModule = extend(true, {}, require('modules/groups'));
-const solrQueryBuilder = require('modules/solr-query-builder');
-const trendingSearch = extend(true, {}, require('modules/trendingSearch'));
 const DebugHelper = require('modules/debug').DebugHelper;
-let momentTimezone = require('moment-timezone');
-let moment = require('moment');
 const sm = require('sitemap');
 
 let config = utils.getConfig();
-const refreshTrendingProducts = require('crons/trendingProductsCron');
-
 const debug = new DebugHelper('AirTableController');
 const AirTableConfig = sails.config.airtable;
 
+const trendingSearch = extend(true, {}, require('modules/trendingSearch'));
 trendingSearch.initialize();
 
 let hostNameConfig;
@@ -44,7 +32,53 @@ if (env === 'development') {
   hostNameConfig = config.hostName;
 }
 
-function getParam (req, paramName, defaultValue) {
+function listCompanies(req) {
+  const userId = getParam(req, 'userId', null);
+  const languageCode = getParam(req, 'locale', 'en');
+  const limit = getParam(req, 'limit', null);
+  const offset = getParam(req, 'offset', null);
+  return new Promise((resolve) => {
+    return AirTableModel.listCompanies(limit, offset, (err, result, newOffset) => {
+      if (err) {
+        debug('error in listCompanies', err);
+        return resolve(null);
+      }
+      let companyConfig = sails.config[`companyPriority_${languageCode}`] || [];
+      for (let i = 0; i < result.length; i++) {
+        for (let j = 0; j < companyConfig.length; j++) {
+          if (result[i].id === companyConfig[j].id) {
+            result[i].fields.priority = companyConfig[j].priority;
+          }
+        }
+        result[i].i = i;
+      }
+      result = addCompanyLocalePriority(result, companyConfig, getCompanyId);
+      let returnResult = null;
+      if (!userId) {
+        result = result.sort(companyCompare);
+        returnResult = utils.getAirtableItemDetail(AirTableConfig.companyFields, languageCode, result);
+        returnResult = setPriority(returnResult);
+        return resolve({
+          'result': returnResult,
+          'offset': newOffset
+        });
+      }
+      // sort company by store
+      return applyAutoRecommendation(result, getCompanyId, userId, 'company')
+        .then((list) => {
+          list = list.sort(companyCompare);
+          returnResult = utils.getAirtableItemDetail(AirTableConfig.companyFields, languageCode, list);
+          returnResult = setPriority(returnResult);
+          return resolve({
+            'result': returnResult,
+            'offset': newOffset
+          });
+        });
+    });
+  });
+}
+
+function getPardam(req, paramName, defaultValue) {
   const rs = req.param(paramName, null);
   if (rs) {
     return rs;
@@ -52,250 +86,7 @@ function getParam (req, paramName, defaultValue) {
   return defaultValue;
 }
 
-function setPriority (list) {
-  // make first 3 items of the list displayed larger
-  let length = Math.min(setting.prioritizedItems, list.length);
-  for (let i = 0; i < length; i++) {
-    if (!list[i].fields) {
-      list[i].priority = 1;
-    } else if (list[i].fields && !list[i].fields.priority) {
-      list[i].fields.priority = 1;
-    }
-  }
-  return list;
-}
-
-function getGroupDetail (groupType, group, page, total, populate, key, code, isSearch) {
-  let count = total;
-  let docs = group.doclist.docs;
-  let ids = docs.map((doc) => doc.id);
-  return new Promise((finalResolve) => {
-    return new Promise((resolve) => {
-      if (groupType === 'category') {
-        let categoryId = group.groupValue;
-        return AirTableModel.findCategory(categoryId)
-        .then((categories) => {
-          if (!categories) {
-            debug('category ', categoryId, 'null');
-            return finalResolve(null);
-          }
-          let category = utils.getAirtableItemDetail(AirTableConfig.categoryFields, code, [categories])[0];
-          if (!category.fields.layout) {
-            category.layout = 1;
-            category.layoutLimit = 3;
-            return resolve(category);
-          }
-          AirTableModel.findLayout(category.fields.layout[0])
-          .then((layout) => {
-            category.layout = layout.fields.type;
-            category.layoutLimit = layout.fields.limit;
-            return resolve(category);
-          })
-          .catch((err) => {
-            debug('Find layout error in category', err);
-            category.layout = 1;
-            category.layoutLimit = 3;
-            return resolve(category);
-          });
-        });
-      } else if (groupType === 'company' || groupType === 'store') {
-        let storeId = group.groupValue;
-        return AirTableModel.findStore(storeId, (err, store) => {
-          if (err) {
-            debug(err);
-            return finalResolve(null);
-          }
-          store = utils.getAirtableItemDetail(AirTableConfig.storeFields, code, [store])[0];
-          if (!store.fields.layout) {
-            store.layout = 1;
-            store.layoutLimit = 3;
-            return resolve(store);
-          }
-          AirTableModel.findLayout(store.fields.layout[0])
-          .then((layout) => {
-            store.layout = layout.fields.type;
-            store.layoutLimit = layout.fields.limit;
-            return resolve(store);
-          })
-          .catch((err1) => {
-            debug('Find layout error in store', err1);
-            store.layout = 1;
-            store.layoutLimit = 3;
-            return resolve(store);
-          });
-        });
-      }
-      return finalResolve(null);
-    })
-    .then((groupingItem) => {
-      return new Promise((resolve) => {
-        if (populate) {
-          return AirTableModel.getProductsByIds(ids, (err1, products) => {
-            if (err1) {
-              debug('error in getGroupDetail', err1);
-              return finalResolve({ err: err1 });
-            }
-            let listKey = [];
-            if (key) {
-              listKey = key.split(',');
-            } else {
-              listKey = AirTableConfig.productFields;
-            }
-            let returnResult = setPriority(utils.getAirtableItemDetail(listKey, code, products, isSearch));
-            return resolve({ groupingItem, returnProducts: returnResult });
-          });
-        }
-        ids = setPriority(ids);
-        return resolve({ groupingItem, returnProducts: ids });
-      });
-    })
-    .then((obj) => {
-      let {groupingItem, returnProducts} = obj;
-      if (returnProducts.length === 0) return finalResolve(null);
-      let returnObj = {
-        count,
-        tag: {
-          id: groupingItem.id,
-          name: groupingItem.fields.name,
-          image: (groupingItem.fields.image) ? groupingItem.fields.image : '',
-          type: groupType
-        },
-        products: returnProducts,
-        layout: groupingItem.layout,
-        limit: groupingItem.layoutLimit
-      };
-      if (groupType === 'company' || groupType === 'store') {
-        returnObj.tag.companyId = (groupingItem.fields && groupingItem.fields.company) ? groupingItem.fields.company[0] : '';
-      }
-      return finalResolve(returnObj);
-    });
-  });
-}
-function getGroup (where, page, limit, type, groupPage, groupLimit, populate, key, code, isSearch) {
-  // we see company type as stores
-  let actualType = '';
-  if (type === 'company' || type === 'store') {
-    actualType = 'stores';
-  } else {
-    actualType = type;
-  }
-  let queries = solrQueryBuilder.buildSearch(where, code);
-
-  return AirTableModel.searchSolrAndGroupByManyQueries(queries, page, limit, actualType, groupPage, groupLimit, isSearch)
-  .then((docs) => {
-    if (!docs) {
-      return [];
-    }
-    let resultGroups = docs.grouped[actualType].groups;
-    let process = [];
-    for (let i = 0; i < resultGroups.length; i++) {
-      if (resultGroups[i].groupValue) {
-        process.push(getGroupDetail(type, resultGroups[i], groupPage, groupLimit, populate, key, code, isSearch));
-      }
-    }
-    return bluebird.all(process)
-    .then((group) => {
-      return new Promise((resolve) => {
-        let newGroup = [];
-        for (let i = 0; i < group.length; i++) {
-          if (group[i]) {
-            newGroup.push(group[i]);
-          }
-        }
-        return resolve(newGroup);
-      });
-    });
-  });
-}
-
-function createGeoJSONFeature (record) {
-  return {
-    type: 'Feature',
-    properties: {
-      'name': record.name
-    },
-    geometry: {
-      type: 'Point',
-      coordinates: [
-        record.coordinates.split(',')[0],
-        record.coordinates.split(',')[1]
-      ]
-    }
-  };
-}
-
-function shuffleReturnedDocs (docs) {
-  let featuredDocs = [];
-  let normalDocs = [];
-  for (let i = 0; i < docs.length; i++) {
-    if (docs[i].featured === 1) {
-      featuredDocs.push(docs[i]);
-    } else {
-      normalDocs.push(docs[i]);
-    }
-  }
-  featuredDocs = shuffle(featuredDocs.slice(0));
-  normalDocs = shuffle(normalDocs.slice(0));
-  for (let i = 0; i < normalDocs.length; i++) {
-    featuredDocs.push(normalDocs[i]);
-  }
-  return featuredDocs;
-}
-
-function addRecommendationScore (list, recommendedList, getObjId) {
-  for (let i = 0; i < list.length; i++) {
-    let id = getObjId(list[i]);
-    if (id) {
-      for (let j = 0; j < recommendedList.length; j++) {
-        if (id === recommendedList[j][1]) {
-          list[i].recommendedScore = recommendedList[j][0];
-        }
-      }
-    }
-    if (!list[i].recommendedScore) {
-      list[i].recommendedScore = 0.0;
-    }
-  }
-  // sort
-  // if (compareFunc) list.sort(compareFunc);
-  // else list.sort(listCompare);
-  // return list;
-  return list;
-}
-
-function addCategoryLocalePriority (list, categoryLocale, getObjId) {
-  let rs = [];
-  list.forEach((item) => {
-    let id = getObjId(item);
-    if (id) {
-      categoryLocale.forEach((category, i) => {
-        if (id === category.id) {
-          item.localePriority = i + 1;
-        }
-      });
-    }
-    rs.push(item);
-  });
-  return rs;
-}
-
-function addCompanyLocalePriority (list, companyLocale, getObjId) {
-  let rs = [];
-  list.forEach((item) => {
-    let id = getObjId(item);
-    if (id) {
-      companyLocale.forEach((company, i) => {
-        if (id === company.id) {
-          item.localePriority = i + 1;
-        }
-      });
-    }
-    rs.push(item);
-  });
-  return rs;
-}
-
-function applyAutoRecommendation (list, getObjId, userId, type) {
+function applyAutoRecommendation(list, getObjId, userId, type) {
   return new Promise((resolve) => {
     userId = null;
     if (userId) {
@@ -333,7 +124,20 @@ function applyAutoRecommendation (list, getObjId, userId, type) {
   });
 }
 
-function companyCompare (a, b) {
+function setPriority(list) {
+  // make first 3 items of the list displayed larger
+  let length = Math.min(setting.prioritizedItems, list.length);
+  for (let i = 0; i < length; i++) {
+    if (!list[i].fields) {
+      list[i].priority = 1;
+    } else if (list[i].fields && !list[i].fields.priority) {
+      list[i].fields.priority = 1;
+    }
+  }
+  return list;
+}
+
+function companyCompare(a, b) {
   if (!a.fields.priority && b.fields.priority) return 1;
   if (a.fields.priority && !b.fields.priority) return -1;
 
@@ -359,11 +163,11 @@ function companyCompare (a, b) {
   return 0;
 }
 
-function getCompanyId (company) {
+function getCompanyId(company) {
   return company.id;
 }
 
-function listCompanies (req) {
+function listCompanies(req) {
   const userId = getParam(req, 'userId', null);
   const languageCode = getParam(req, 'locale', 'en');
   const limit = getParam(req, 'limit', null);
@@ -396,41 +200,36 @@ function listCompanies (req) {
       }
       // sort company by store
       return applyAutoRecommendation(result, getCompanyId, userId, 'company')
-      .then((list) => {
-        list = list.sort(companyCompare);
-        returnResult = utils.getAirtableItemDetail(AirTableConfig.companyFields, languageCode, list);
-        returnResult = setPriority(returnResult);
-        return resolve({
-          'result': returnResult,
-          'offset': newOffset
+        .then((list) => {
+          list = list.sort(companyCompare);
+          returnResult = utils.getAirtableItemDetail(AirTableConfig.companyFields, languageCode, list);
+          returnResult = setPriority(returnResult);
+          return resolve({
+            'result': returnResult,
+            'offset': newOffset
+          });
         });
-      });
     });
   });
 }
 
-function getCategoryId (category) {
-  return category.id;
+function addCompanyLocalePriority(list, companyLocale, getObjId) {
+  let rs = [];
+  list.forEach((item) => {
+    let id = getObjId(item);
+    if (id) {
+      companyLocale.forEach((company, i) => {
+        if (id === company.id) {
+          item.localePriority = i + 1;
+        }
+      });
+    }
+    rs.push(item);
+  });
+  return rs;
 }
 
-function categoryCompare (a, b) {
-  if (!a.fields.priority && b.fields.priority) return 1;
-  if (a.fields.priority && !b.fields.priority) return -1;
-
-  if (!a.localePriority && b.localePriority) return 1;
-  if (a.localePriority && !b.localePriority) return -1;
-
-  if (a.localePriority && b.localePriority) {
-    if (a.localePriority > b.localePriority) return 1;
-    if (a.localePriority < b.localePriority) return -1;
-  }
-
-  if (a.recommendedScore < b.recommendedScore) return 1;
-  else if (a.recommendedScore === b.recommendedScore) return 0;
-  return -1;
-}
-
-function listCategories (req) {
+function listCategories(req) {
   const userId = getParam(req, 'userId', null);
   const languageCode = getParam(req, 'locale', 'en');
   const limit = getParam(req, 'limit', null);
@@ -453,50 +252,43 @@ function listCategories (req) {
         });
       }
       return applyAutoRecommendation(result, getCategoryId, userId, 'category')
-      .then((list) => {
-        list = list.sort(categoryCompare);
-        returnResult = utils.getAirtableItemDetail(AirTableConfig.categoryFields, languageCode, list);
-        returnResult = setPriority(returnResult);
-        return resolve({
-          result: returnResult,
-          offset: newOffset
+        .then((list) => {
+          list = list.sort(categoryCompare);
+          returnResult = utils.getAirtableItemDetail(AirTableConfig.categoryFields, languageCode, list);
+          returnResult = setPriority(returnResult);
+          return resolve({
+            result: returnResult,
+            offset: newOffset
+          });
         });
+    });
+  });
+}
+
+function addCategoryLocalePriority(list, categoryLocale, getObjId) {
+  let rs = [];
+  list.forEach((item) => {
+    let id = getObjId(item);
+    if (id) {
+      categoryLocale.forEach((category, i) => {
+        if (id === category.id) {
+          item.localePriority = i + 1;
+        }
       });
-    });
+    }
+    rs.push(item);
   });
+  return rs;
 }
 
-function listFeatured (req) {
-  let languageCode = getParam(req, 'locale', null);
-  const args = {
-    limit: 50
-  };
-  return new Promise((resolve) => {
-    return AirTableModel.listFeatured(args, (err, result) => {
-      if (err) {
-        debug('error in listFeatured', err);
-        return resolve(null);
-      }
-      let returnResult = utils.getAirtableItemDetail(AirTableConfig.featuredFields, languageCode, result);
-      return resolve(returnResult);
-    });
-  });
+function getCategoryId(category) {
+  return category.id;
 }
 
-function listStoreTypes (req) {
-  let locale = req.param('locale', 'en');
-  return sails.config[`storeType_${locale}`];
-}
+function categoryCompare(a, b) {
+  if (!a.fields.priority && b.fields.priority) return 1;
+  if (a.fields.priority && !b.fields.priority) return -1;
 
-function getGroupId (group) {
-  return group.tag.id;
-}
-
-function getGroupIdForCompany (group) {
-  return group.tag.companyId;
-}
-
-function groupCompare (a, b) {
   if (!a.localePriority && b.localePriority) return 1;
   if (a.localePriority && !b.localePriority) return -1;
 
@@ -504,797 +296,66 @@ function groupCompare (a, b) {
     if (a.localePriority > b.localePriority) return 1;
     if (a.localePriority < b.localePriority) return -1;
   }
+
   if (a.recommendedScore < b.recommendedScore) return 1;
   else if (a.recommendedScore === b.recommendedScore) return 0;
   return -1;
-}
-
-function getProductId (product) {
-  return product.id;
-}
-function productCompare (a, b) {
-  if (!a.fields.featured && b.fields.featured) return 1;
-  else if (a.fields.featured && !b.fields.featured) return -1;
-  if (a.recommendedScore < b.recommendedScore) return 1;
-  else if (a.recommendedScore === b.recommendedScore) return 0;
-  return -1;
-}
-
-function getDeliveryDateWithBufferFromProduct (date, product) {
-  let tempDate = date.clone();
-  if (product.fields.canOrderAfter) {
-    let orderAfterComponents = product.fields.canOrderAfter.split(',');
-    tempDate.add(orderAfterComponents[0], 'weeks');
-    tempDate.add(orderAfterComponents[1], 'days');
-    tempDate.add(orderAfterComponents[2], 'hours');
-  }
-  if (product.fields.canOrderAt) {
-    let canOrderAtDate = moment(product.fields.canOrderAt);
-    if (canOrderAtDate.isAfter(tempDate)) {
-      tempDate = moment(canOrderAtDate);
-    }
-  }
-  return tempDate;
-}
-
-function getHourFromSetting (operatingHours) {
-  return parseInt(operatingHours.split(':')[0], 10);
-}
-
-function getMinuteFromSetting (operatingHours) {
-  return parseInt(operatingHours.split(':')[1], 10);
-}
-
-function getOperatingHourOfDate (date, startHour, operatingHours) {
-  operatingHours = operatingHours || setting.operatingHours;
-  let operatingDate = operatingHours[date.day() % 7];
-
-  if (!startHour) startHour = operatingDate.opens;
-  if (startHour && startHour < operatingDate.opens) startHour = operatingDate.opens;
-
-  let opens = getHourFromSetting(startHour);
-  let closes = getHourFromSetting(operatingDate.closes);
-
-  // use startHour, operatingDate.closes because we want to compare all hour/minute/second
-  if (closes === 0 || startHour > operatingDate.closes) {
-    return [];
-  }
-
-  let fromH = momentTimezone.tz(`${date.format('DD/MM/YYYY')} ${startHour || operatingDate.opens}`, 'DD/MM/YYYY HH:mm:ss', setting.timezone);
-  let list = [];
-
-  list.push({
-    begin: (startHour) ? fromH.format('DD/MM/YYYY HH:mm:00') : fromH.format('DD/MM/YYYY HH:00:00'),
-    end: (startHour) ? fromH.add(1, 'hours').format('DD/MM/YYYY HH:mm:00') : fromH.add(1, 'hours').format('DD/MM/YYYY HH:00:00'),
-    available: true,
-    fee: sails.config.serviceFee
-  });
-
-  for (let j = opens + 1; j < closes + 1; j++) {
-    list.push({
-      begin: fromH.format('DD/MM/YYYY HH:00:00'),
-      end: fromH.add(1, 'hours').format('DD/MM/YYYY HH:00:00'),
-      available: true,
-      fee: sails.config.serviceFee
-    });
-  }
-
-  if (getMinuteFromSetting(operatingDate.closes) > 0) {
-    let last = momentTimezone.tz(`${date.format('DD/MM/YYYY')} ${operatingDate.closes}`, 'DD/MM/YYYY HH:mm:ss', setting.timezone);
-    list.push({
-      begin: last.format('DD/MM/YYYY HH:mm:00'),
-      end: last.add(1, 'hours').format('DD/MM/YYYY HH:mm:00'),
-      available: true,
-      fee: sails.config.serviceFee
-    });
-  }
-
-  return list;
-}
-
-function roundTime (date) {
-  if (date.minute() < 30) {
-    date.minute(30);
-  } else if (date.minute() > 30) {
-    date.add(1, 'hours').minute(0);
-  }
-  return date;
-}
-
-function getProductDeliveryDate (id) {
-  // Get the product from the product ID
-  return AirTableModel.getProductsByIds([id], (err1, products) => {
-    // Not sure what this do though
-    if (err1) {
-      debug('error in getGroupDetail', err1);
-      return null;
-    }
-    const product = products[0];
-    // In case no product with such ID
-    if (Object.keys(product).length === 0) {
-      return null;
-    }
-    const storeId = product.fields.stores[0];
-    return sails.models.storeoperatinghours.combine([storeId])
-    .then((operatingHours) => {
-      const now = momentTimezone.tz(moment().format('DD/MM/YYYY HH:mm:00'), 'DD/MM/YYYY HH:mm:00', setting.timezone);
-      let modifiedDate = getDeliveryDateWithBufferFromProduct(now, product);
-      modifiedDate = roundTime(modifiedDate);
-      for (let i = 0; i < 7; i += 1) {
-        let timeslots = i === 0 ? getOperatingHourOfDate(modifiedDate, modifiedDate.format('HH:mm:00'), operatingHours) : getOperatingHourOfDate(modifiedDate, null, operatingHours);
-        timeslots = timeslots.filter(timeslot => timeslot.available === true);
-        if (timeslots.length > 0) {
-          let result = {};
-          result[product.id] = {
-            begin: timeslots[0].begin,
-            end: timeslots[0].end
-          };
-          return result;
-        }
-        modifiedDate.add('1', 'days');
-      }
-    });
-  });
-}
-
-function addTimeByNumberOfStores (date, numOfStores) {
-  let extraStores = Math.max(0, numOfStores - 1);
-  return setting.incAdditionOrderTime * extraStores;
-}
-
-function addTimeBySomeSpecificStores (date, storeIds, products) {
-  let extraTime = 0;
-  let productsByStore = products.reduce(function (sums, entry) {
-   sums[entry.fields.stores] = (sums[entry.fields.stores] || 0) + 1;
-   return sums;
-  }, {});
-  let storeIdsSet = new Set(storeIds);
-  let scheduledStores = sails.config.scheduledStores;
-  for (let id of storeIdsSet) {
-    if (scheduledStores.indexOf(id) > -1) {
-      let itemsCount = productsByStore[id];
-      if (itemsCount > 10 && itemsCount <= 30) {
-        extraTime += 30 * 60;
-      } else if (itemsCount > 30) {
-        extraTime += 60 * 60;
-      }
-    }
-  }
-  return extraTime;
-}
-
-function getProductsDeliveryDate (ids) {
-  return AirTableModel.getProductsByIds(ids, (err1, products) => {
-   // Not sure what this do though
-    if (err1) {
-      debug('error in getGroupDetail', err1);
-      return null;
-    }
-    const storeIds = products.map((product) => product.fields && product.fields.stores[0]);
-    return sails.models.storeoperatinghours.combine(storeIds)
-    .then((operatingHours) => {
-      let now = momentTimezone.tz(moment().format('DD/MM/YYYY HH:mm:00'), 'DD/MM/YYYY HH:mm:00', setting.timezone);
-      let date = momentTimezone.tz(moment().format('DD/MM/YYYY HH:mm:00'), 'DD/MM/YYYY HH:mm:00', setting.timezone);
-      let extraTime = 0;
-      extraTime += addTimeByNumberOfStores(date, new Set(storeIds).size);
-      extraTime += addTimeBySomeSpecificStores(date, storeIds, products);
-      date.add(Math.min(extraTime, setting.maxAdditionOrderTime), 'seconds');
-      debug('calculatedDay', date);
-      let diff = Math.round(moment.duration(date.diff(now)).asMinutes());
-      if (diff > 3 * 60) {
-        date.subtract(diff, 'minutes');
-        date.add(3 * 60, 'minutes');
-      }
-
-      let maxDate = moment.max(products.map((product) => getDeliveryDateWithBufferFromProduct(date, product)));
-      maxDate = roundTime(maxDate);
-      for (let i = 0; i < 7; i += 1) {
-        let timeslots = i === 0 ? getOperatingHourOfDate(maxDate, maxDate.format('HH:mm:00'), operatingHours) : getOperatingHourOfDate(maxDate, null, operatingHours);
-        timeslots = timeslots.filter(timeslot => timeslot.available === true);
-        if (timeslots.length > 0) {
-          let result = {};
-          result.deliveryDate = {
-            begin: timeslots[0].begin,
-            end: timeslots[0].end
-          };
-          return result;
-        }
-        maxDate.add('1', 'days');
-      }
-    });
-  });
-}
-
-function deliveryPromise (productId) {
-  return new Promise((resolve) => {
-    getProductDeliveryDate(productId)
-    .then((rs) => {
-      if (rs) {
-        return resolve(rs);
-      }
-      return resolve(null);
-    });
-  });
 }
 
 module.exports = {
-  _config: {
-    rest: false
-  },
-
-  listCompanies (req, res) {
-    return listCompanies(req)
-    .then((rs) => {
-      if (rs) {
-        return res.ok(rs);
-      }
-      return res.serverError();
-    });
-  },
-
-  listStores (req, res) {
-    const locale = getParam(req, 'locale', 'vi');
-    const limit = getParam(req, 'limit', '20');
-    const offset = getParam(req, 'offset', null);
-    AirTableModel.listStores({
-      limit,
-      offset,
-      locale
-    })
-      .then(({err, result, newOffset}) => {
-        if (err) {
-          return debug('error in listStores', err);
-        }
-
-        res.ok({
-          result,
-          offset: newOffset
-        });
-      });
-  },
-
-  makeStoresGeoJSON (req, res) {
-    let limit = null;
-    let offset = null;
-    let locale = 'en';
-
-    AirTableModel.listStores({
-      limit,
-      offset,
-      locale
-    })
-      .then(({ err, result, newOffset }) => {
-        if (err) {
-          return debug('error in listStores', err);
-        }
-        let parsedRecords = result
-          .map(record => createGeoJSONFeature(record.fields));
-
-        res.ok(parsedRecords);
-      });
-  },
-
-  findStore (req, res) {
-    const languageCode = getParam(req, 'locale', null);
-    const storeId = req.param('storeId');
-    if (!storeId) {
-      debug('storeId is required');
-      return res.badRequest('storeId is required');
-    }
-
-    AirTableModel.findStore(storeId, (err, record) => {
-      let returnResult = utils.getAirtableItemDetail(AirTableConfig.storeFields, languageCode, [record]);
-      res.ok(returnResult[0]);
-    });
-  },
-
-  listCategories (req, res) {
-    return listCategories(req)
-    .then((rs) => {
-      if (rs) {
-        return res.ok(rs);
-      }
-      return res.serverError();
-    });
-  },
-
-
-  getProducts (requestHttp, responseHttp) {
-    debug('getProducts');
-
-    function processGet (req, res) {
-      let userId = getParam(req, 'userId', null);
-      let code = getParam(req, 'locale', 'en');
-      let where = getParam(req, 'where', null);
-      let populate = getParam(req, 'populate', null);
-      let key = getParam(req, 'key', null);
-      let limit = parseInt(getParam(req, 'limit', 20), 10);
-      let page = parseInt(getParam(req, 'page', 1), 10);
-
-      let isSearch = solrQueryBuilder.isSearch(where);
-      let queries = solrQueryBuilder.buildSearch(where, code);
-
-      return AirTableModel.searchSolrByManyQueries(queries, page, limit, isSearch)
-      .then((docs) => {
-        if (!docs) {
-          return res.ok( { err: 1 });
-        }
-        let count = docs.response.numFound;
-        let resultDocs = docs.response.docs;
-        let ids = resultDocs.map((doc) => doc.id);
-        if (populate) {
-          return AirTableModel.getProductsByIds(ids, (err1, products) => {
-            if (err1) {
-              debug('error in getProductsByIds', err1);
-              return res.ok({ err: err1 });
-            }
-            // debug('getProductsByIds check key ', key);
-            if (key) {
-              key = key.split(',');
-            } else {
-              key = AirTableConfig.productFields;
-            }
-            // debug('getProductsByIds check key ', products);
-            if (!userId) {
-              let returnResult = utils.getAirtableItemDetail(key, code, products, isSearch);
-              returnResult = setPriority(returnResult);
-              return res.ok({ result: returnResult, count, nextPage: page + 1, limit });
-            }
-            return applyAutoRecommendation(products, getProductId, userId, 'product')
-            .then((list) => {
-              list = list.sort(productCompare);
-              return res.ok({
-                result: setPriority(utils.getAirtableItemDetail(key, code, list, isSearch)),
-                count,
-                nextPage: page + 1,
-                limit });
-            });
-          });
-        }
-        return res.ok({ result: ids, count, nextPage: page + 1, limit });
-      });
-    }
-    function processPost (req, res) {
-      function getProducts (requestHttpObj) {
-        let locale = requestHttpObj.param('locale', 'en');
-        let key = requestHttpObj.param('key', null);
-        let prdIds = requestHttpObj.param('productIds', null);
-        return AirTableModel.fetchAirtableRecordsAndCache('Products', prdIds)
-        .then((products) => {
-          if (key) {
-            key = key.split(',');
-          } else {
-            key = AirTableConfig.productFields;
-          }
-          let returnResult = utils.getAirtableItemDetail(key, locale, products);
-          return returnResult;
-        })
-        .catch((err) => {
-          debug('get Products error', err);
-          return [];
-        });
-      }
-
-      let prdIds = req.param('productIds', null);
-      let userId = req.param('userId', null);
-      let giftId = req.param('giftId', null);
-      if (!prdIds) {
-        return res.ok({ error: { productIds: true, message: 'productIds required' } });
-      }
-      let process = [
-        getProducts(req),
-        sails.models.users.isIgnoreGift(userId, giftId)
-      ];
-      return bluebird.all(process)
-      .then((rs) => {
-        return res.ok({ products: rs[0], ignoreGift: rs[1] });
-      });
-    }
-    if (requestHttp.method.toUpperCase() === 'POST') {
-      return processPost(requestHttp, responseHttp);
-    }
-    return processGet(requestHttp, responseHttp);
-  },
-
-  getProductsAndGroupBy (req, res) {
-    function getParams (clientRequest) {
-      let userId = getParam(clientRequest, 'userId', null);
-      let code = getParam(clientRequest, 'locale', 'en');
-      let where = getParam(clientRequest, 'where', null);
-      let populate = getParam(clientRequest, 'populate', null);
-      let key = getParam(clientRequest, 'key', null);
-      let groupBy = getParam(clientRequest, 'groupBy', null);
-      groupBy = (groupBy) ? groupBy.split(',') : ['category', 'company', 'store'];
-      let limit = req.param('page') ? setting.numOfGroup : setting.numOfGroupDefault;
-      let page = parseInt(getParam(clientRequest, 'page', 1), 10);
-      let groupPage = 1;
-      let groupLimit = setting.numItemOfGroup;
-
-      limit = getParam(clientRequest, 'limit', limit);
-
-      return {
-        userId,
-        code,
-        where,
-        populate,
-        key,
-        groupBy,
-        limit,
-        page,
-        groupLimit,
-        groupPage
-      };
-    }
-    let { userId, code, where, populate, key, groupBy, limit, page, groupLimit, groupPage } = getParams(req);
-
-    for (let i = 0; i < groupBy.length; i++) {
-      if (groupBy[i] !== 'category' && groupBy[i] !== 'company' && groupBy[i] !== 'store') {
-        return res.ok({ err: 1 });
-      }
-    }
-
-    let isSearch = solrQueryBuilder.isSearch(where);
-    let returnList = [];
-
-    let process = [];
-    for (let i = 0; i < groupBy.length; i++) {
-      process.push(getGroup(where, page, limit, groupBy[i], groupPage, groupLimit, populate, key, code, isSearch));
-    }
-    return bluebird.all(process)
-      .then((groups) => {
-        let rs = [];
-        groups.forEach((group, i) => {
-          if (groupBy[i] === 'category') {
-            group = addCategoryLocalePriority(group, sails.config[`categoryPriority_${code}`] || [], getGroupId);
-          } else if (groupBy[i] === 'company' || groupBy[i] === 'store') {
-            group = addCompanyLocalePriority(group, sails.config[`companyPriority_${code}`] || [], getGroupIdForCompany);
-          }
-          rs.push(group);
-        });
-        return rs;
-      })
-      .then((groups) => {
-        // get recommended list of categories
-        return new Promise((resolve) => {
-          if (userId && !isSearch) {
-            let processRecommend = [];
-            for (let i = 0; i < groupBy.length; i++) {
-              if (groups[i]) {
-                processRecommend.push(applyAutoRecommendation(groups[i], getGroupId, userId, groupBy[i]));
-              }
-            }
-            return bluebird.all(processRecommend)
-            .then((recommendedGroups) => {
-              return resolve(recommendedGroups);
-            });
-          }
-          return resolve(groups);
-        });
-      })
-      .then((groups) => {
-        let rs = [];
-        groups.forEach((group) => {
-          if (isSearch) {
-            rs.push(group);
-          } else {
-            rs.push(group.sort(groupCompare));
-          }
-        });
-        return rs;
-      })
-      .then((groups) => {
-        for (let i = 0; i < groups.length; i++) {
-          _.assign(returnList, setPriority(groups[i]));
-        }
-        return res.ok(returnList);
-      })
-      .catch((err) => {
-        console.error('ERROR >> search products and group', err);
-        return res.ok({ err });
-      });
-  },
-
-  indexingSolr (req, res) {
-    AirTableModel.indexingSolr()
-      .then(AirTableModel.indexingSolrTest)
-      .then(() => {
-        debug('indexing done');
-        slacker('indexingSolrSucceeded');
-        refreshTrendingProducts.run();
-      })
-      .catch((err) => {
-        console.error('ERROR >> indexingSolrFailed', err);
-        slacker('indexingSolrFailed', err);
-      });
-
-    return res.ok({ ok: 1 });
-  },
-
-  indexingAirtable (req, res) {
-    let baseNames = req.param('tables', null);
-
-    AirTableModel.indexingAirtable(baseNames)
-      .then(() => {
-        if (baseNames && !_.includes(baseNames.split(','), 'Groups')) return;
-
-        recipesModule.initialize();
-        collectionsModule.initialize();
-        groupsModule.initialize();
-        return recipesModule.getAllRecipes()
-          .then(() => collectionsModule.getAllCollections())
-          .then(() => groupsModule.indexAllGroups());
-      })
-      .then(() => {
-        // ping slack succeed
-        debug('indexing airtable success');
-        slacker('indexingAirtable', 'success');
-      })
-      .catch((err) => {
-        // ping slack failed
-        console.error('ERROR >> indexing airtable fail', err);
-        slacker('indexingAirtable', 'fail');
-      });
-
-    return res.ok({ ok: 1 });
-  },
-
-  listFeatured (req, res) {
-    return listFeatured(req)
-    .then((rs) => {
-      if (rs) {
-        return res.ok(rs);
-      }
-      return res.serverError();
-    });
-  },
-
-  getTrendingProducts (req, res) {
-    let page = parseInt(req.param('page', 1), 10);
-    let limit = parseInt(req.param('limit', 12), 10);
-    let locale = req.param('locale', 'en');
-    return AirTableModel.getTrendingProducts(locale, page, limit)
-      .then((prods) => {
-        let prds = utils.getAirtableItemDetail(AirTableConfig.productFields, locale, prods);
-        return res.ok(prds);
-      });
-  },
-
-  getInitialData (req, res) {
-    let version = req.param('version', 'v1');
-    switch (version) {
-      default:
-      case 'v1':
-        return this.getInitialDataV1(req, res);
-
-      case 'v2':
-        return this.getInitialDataV2(req, res);
-    }
-  },
-
-  getInitialDataV1 (req, res) {
-    let platform = req.param('platform', null) || 'ios';
-    let locale = req.param('locale', 'en');
-    let trendingPrdsLimit = parseInt(req.param('trendingProductsLimit', 20), 10);
-    let process = [
-      sails.services.utils.getPlatformSettings(platform),
-      listCompanies(req),
-      listCategories(req),
-      listFeatured(req),
-      AirTableModel.getTrendingProducts(locale, 1, trendingPrdsLimit).then((prods) => {
-        return utils.getAirtableItemDetail(AirTableConfig.productFields, locale, prods);
-      }),
-      listStoreTypes(req),
-      trendingSearch.getKeywords(locale),
-      AirTableModel.getCities(locale),
-      AirTableModel.getRewardsList(locale),
-      AirTableModel.getRedeemsList(locale),
-    ];
-
-    return bluebird.all(process)
-      .then((rs) => {
-        let result = {
-          settings: rs[0],
-          companies: rs[1],
-          categories: rs[2],
-          features: rs[3],
-          trendingProducts: rs[4],
-          storeTypes: rs[5],
-          trendingSearch: rs[6],
-          cities: rs[7],
-          rewardsList: rs[8].records,
-          redeemsList: rs[9],
-          giftProductId: config.giftProductId,
-        };
-        return res.ok(result);
-      });
-  },
-
-  getInitialDataV2 (req, res) {
-    let content = req.param('content');
-
-    if (!content) {
-      return res.badRequest('missing content param');
-    }
-
-    let contentArray = content.toString().split(',');
-    if (contentArray.length === 0) {
-      return res.badRequest('No content to return');
-    }
-
-    let process = [];
-    for (let i = 0; i < contentArray.length; i++) {
-      process.push(this.addInitialProcess(req, contentArray[i]));
-    }
-
-    return bluebird.all(process)
-      .then((rs) => {
-        let result = {};
-        for (let i = 0; i < rs.length; i++) {
-          result[contentArray[i]] = rs[i];
-        }
-        return res.ok(result);
-      });
-  },
-
-  addInitialProcess (req, content) {
-    let locale = req.param('locale', 'en');
-
-    switch (content) {
-      case 'settings': {
-        let platform = req.param('platform', null) || 'ios';
-        return sails.services.utils.getPlatformSettings(platform);
-      }
-
-      case 'companies':
-        return listCompanies(req);
-
-      case 'categories':
-        return listCategories(req);
-
-      case 'features':
-        return listFeatured(req);
-
-      case 'trendingProducts': {
-        let trendingPrdsLimit = parseInt(req.param('trendingProductsLimit', 20), 10);
-        return AirTableModel.getTrendingProducts(locale, 1, trendingPrdsLimit).then((prods) => {
-          return utils.getAirtableItemDetail(AirTableConfig.productFields, locale, prods);
-        });
-      }
-
-      case 'storeTypes':
-        return listStoreTypes(req);
-
-      case 'trendingSearch':
-        return trendingSearch.getKeywords(locale);
-
-      case 'cities':
-        return AirTableModel.getCities(locale);
-
-      case 'rewardsList':
-        return AirTableModel.getRewardsList(locale).then((rewardsList) => {
-          return rewardsList.records;
-        });
-
-      case 'redeemList':
-        return AirTableModel.getRedeemsList(locale);
-
-      case 'giftProductId':
-        return config.giftProductId;
-      default:
-    }
-  },
-
-  getProductDeliveryDate (req, res) {
-    const productID = getParam(req, 'productId', null);
-    return getProductDeliveryDate(productID)
-    .then((rs) => {
-      if (rs) {
-        return res.ok({ payload: rs });
-      }
-      return res.badRequest();
-    });
-  },
-
-  getProductsDeliveryDate (req, res) {
-    const productIds = req.param('productIds', null);
-    let requests = [];
-    for (let i = 0; i < productIds.length; i++) {
-      requests.push(
-        deliveryPromise(productIds[i])
-      );
-    }
-    Promise.all(requests).then((arrayResult) => {
-      let result = {};
-
-      arrayResult.forEach((item, i) => {
-        let productId = Object.keys(item)[0];
-        result[productId] = item[productId];
-      });
-      return result;
-    }).then((result) => {
-      return new Promise(function (resolve) {
-        getProductsDeliveryDate(productIds)
+  getStoresXml(req, res) {
+    new Promise((resolve) => {
+      listCompanies(req)
         .then((rs) => {
           if (rs) {
-            let payload = Object.assign(result, rs);
-            return res.ok({ payload });
+            let sitemap = sm.createSitemap({
+              hostname: `${hostNameConfig}/categories`,
+              cacheTime: 600000,
+            });
+            rs.result.forEach((value) => {
+              if (value.fields.published) {
+                sitemap.add({ url: `${value.fields.alias}`, changefreq: 'weekly', lastmodISO: new Date().toISOString(), priority: 0.7, });
+              }
+            });
+            res.header('Content-Type', 'application/xml');
+            return res.ok(sitemap.toString());
           }
           return res.serverError();
         });
-      });
     });
   },
 
-  softIndexingSolr (req, res) {
-    const view = req.param('view');
-
-    if (!view) {
-      return res.badRequest('missing required params');
-    }
-
-    AirTableModel.softIndexingSolr(view)
-      .then(() => {
-        debug('soft indexing solr done');
-        slacker('softIndexingSolrSucceeded', { view, });
-        refreshTrendingProducts.run();
-      })
-      .catch((err) => {
-        console.error('ERROR >> softIndexingSolrFailed', err);
-        slacker('softIndexingSolrFailed', { view, err, });
-      });
-
-    return res.ok({ ok: 1 });
-  },
-
-  getStoresXml (req, res) {
-    let process = [
-      listCompanies(req),
-    ];
-    return bluebird.all(process)
-      .then((rs) => {
-        let sitemap = sm.createSitemap({
-          hostname: hostNameConfig,
-          cacheTime: 600000,
-        });
-        rs[0].result.forEach((value) => {
-          if (value.fields.published) {
-            sitemap.add({ url: `${value.fields.alias}`, changefreq: 'weekly', lastmodISO: new Date().toISOString(), priority: 0.7, });
+  getCategoriesXml(req, res) {
+    new Promise((resolve) => {
+      listCategories(req)
+        .then((rs) => {
+          if (rs) {
+            let sitemap = sm.createSitemap({
+              hostname: `${hostNameConfig}/categories`,
+              cacheTime: 600000,
+            });
+            rs.result.forEach((value) => {
+              if (value.fields.published) {
+                sitemap.add({ url: `${value.fields.alias}`, changefreq: 'weekly', lastmodISO: new Date().toISOString(), priority: 0.7, });
+              }
+            });
+            res.header('Content-Type', 'application/xml');
+            return res.ok(sitemap.toString());
           }
+          return res.serverError();
         });
-        res.header('Content-Type', 'application/xml');
-        return res.ok(sitemap.toString());
-      });
+    });
   },
 
-  getCategoriesXml (req, res) {
-    let process = [
-      listCategories(req),
-    ];
-    return bluebird.all(process)
-      .then((rs) => {
-        let sitemap = sm.createSitemap({
-          hostname: `${hostNameConfig}/categories`,
-          cacheTime: 600000,
-        });
-        rs[0].result.forEach((value) => {
-          if (value.fields.published) {
-            sitemap.add({ url: `${value.fields.alias}`, changefreq: 'weekly', lastmodISO: new Date().toISOString(), priority: 0.7, });
-          }
-        });
-        res.header('Content-Type', 'application/xml');
-        return res.ok(sitemap.toString());
-      });
-  },
-
-  getSiteMapXml (req, res) {
+  getSiteMapXml(req, res) {
     let sitemap = sm.buildSitemapIndex({
       urls:
-      [`${hostNameConfig}/sitemap.xml`,
+        [`${hostNameConfig}/sitemap.xml`,
         `${hostNameConfig}/sitemap/categories.xml`,
         `${hostNameConfig}/sitemap/stores.xml`,
-      ],
+        ],
     });
     res.header('Content-Type', 'application/xml');
     return res.ok(sitemap.toString());
-  },
-};
+  }
+}
