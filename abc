@@ -1,4 +1,3 @@
-
 /**
 *
 * RecipeDetails
@@ -35,7 +34,6 @@ const debug = new DebugHelper('components/RecipeDetails');
 
 const Ingredient = (props) => {
   function toggleCheckbox (productId, quantity) {
-    console.log("0");
     if (productId) {
       let indexOfProduct = -1;
       productsToAdd.forEach((product, index) => {
@@ -44,17 +42,15 @@ const Ingredient = (props) => {
         }
       });
       if (indexOfProduct === -1) {
-        console.log("2"+productsToAdd.length);
         productsToAdd.push({ productId, quantity });
       } else {
-        console.log("3" + productsToAdd.length);
         productsToAdd.splice(indexOfProduct, 1);
       }
     }
-    thisistest();
+    checkEmpty();
   }
 
-  const { ingredient, locale, productsToAdd, cart, thisistest } = props;
+  const { ingredient, locale, productsToAdd, cart, checkEmpty, data } = props;
   const {
     displayQuantity,
     text,
@@ -66,7 +62,7 @@ const Ingredient = (props) => {
   const {
     id: productId,
     name: productName,
-    availableQuantity, 
+    availableQuantity,
     published,
   } = product;
   const isAvailable = isProductAvailable(availableQuantity);
@@ -77,6 +73,7 @@ const Ingredient = (props) => {
   const thumbnail = product['thumbnail@2x'];
   const thumbnailUrl = thumbnail && thumbnail[0] && thumbnail[0].url;
   const isAdded = productsToAdd.map(products => products.productId).includes(productId);
+  console.log("isAdder  "+isAdded +"data"+ data)
   return (
     <tr className={styles.ingredientsItem}>
       <td>
@@ -85,11 +82,20 @@ const Ingredient = (props) => {
             <IconCartHappy height={20} width={20} />
           </span>
         }
-        { productId && !cart.has(productId) && !outOfStock &&
+        { productId && !cart.has(productId) && !outOfStock && !data &&
           <Input
             name={productId}
             type="checkbox"
             defaultChecked={isAdded}
+            className="inline"
+            onChange={() => toggleCheckbox(productId, quantity)}
+          />
+        }
+        { productId && !cart.has(productId) && !outOfStock && data &&
+          <Input
+            name={productId}
+            type="checkbox"
+            defaultChecked
             className="inline"
             onChange={() => toggleCheckbox(productId, quantity)}
           />
@@ -130,53 +136,68 @@ const Ingredient = (props) => {
   );
 };
 
-
 class RecipeDetails extends React.Component {
   constructor (props) {
     super(props);
-    this.remove = this.remove.bind(this);
+    this.checkEmpty = this.checkEmpty.bind(this);
+    this.setNewNumber = this.setNewNumber.bind(this)
     this.state = {
-      data: 0,
-      temp: -1,
+      isEmptyCheck: false,
+      data: false,
+      button:false,
     };
-    
   }
-  componentWillMount() {
-    //Thực hiện một số tác vụ, hàm này chỉ thực hiện 1 lần duy nhất
+
+  componentWillMount () {
     const {
-      name,
-      description = '',
-      images,
-      author,
       ingredients,
-      preparations,
-      locale,
-      // serve,
-      addProductsToCart,
       productsToAdd,
       cart,
     } = this.props;
     function isOutOfStock (availableQuantity, published) {
       return !isProductAvailable(availableQuantity) || !published;
     }
-    if (1===1) {
-      ingredients.forEach((ingredient) => {
-        if (!cart.has(ingredient.product.id) && ingredient.product && !isOutOfStock(ingredient.product.availableQuantity, ingredient.product.published)) {
-          productsToAdd.push({
-            productId: ingredient.product.id,
-            quantity: ingredient.quantity,
-          });
-        }
-      });
-    }
-    console.log("so san pham : "+productsToAdd.length)
+    ingredients.forEach((ingredient) => {
+      if (ingredient.product && !cart.has(ingredient.product.id) && ingredient.product && !isOutOfStock(ingredient.product.availableQuantity, ingredient.product.published)) {
+        productsToAdd.push({
+          productId: ingredient.product.id,
+          quantity: ingredient.quantity,
+        });
+      }
+    });
   }
-  remove () {
+  checkEmpty () {
     const {
       productsToAdd,
     } = this.props;
-    this.setState({ temp: productsToAdd.length });
+    
+    let isEmpty = false;
+    if (productsToAdd.length === 0) { isEmpty = true; }
+    this.setState({ isEmptyCheck: isEmpty });
   }
+  setNewNumber() {
+    const {
+      ingredients,
+      productsToAdd,
+      cart,
+      addProductsToCart,
+    } = this.props;
+    function isOutOfStock (availableQuantity, published) {
+      return !isProductAvailable(availableQuantity) || !published;
+    }
+    productsToAdd.length=0;
+        ingredients.forEach((ingredient) => {
+          if (ingredient.product && !cart.has(ingredient.product.id) && ingredient.product && !isOutOfStock(ingredient.product.availableQuantity, ingredient.product.published)) {
+            productsToAdd.push({
+              productId: ingredient.product.id,
+              quantity: ingredient.quantity,
+            });
+          }
+        });
+        console.log("this is test"+productsToAdd.length)
+      this.setState({data: !this.state.data , isEmptyCheck  :false})
+
+   }
   render () {
     debug('render');
     const classes = cx({
@@ -194,15 +215,16 @@ class RecipeDetails extends React.Component {
     addProductsToCart,
     productsToAdd,
     cart,
+    checkEmpty,
   } = this.props;
-
+  
     const photoUrl = images && images[0] && images[0].url;
-    console.log(this.state.temp);
+
     debug('ingredientName', ingredients);
 
     const metaTitle = `${name}`;
     let metaKeywords = ingredients
-      .map(ingredient => `${ingredient.text},${ingredient.text_vn}`);
+    .map(ingredient => `${ingredient.text},${ingredient.text_vn}`);
 
     metaKeywords.push('công thức nấu ăn');
     metaKeywords.push('cooking');
@@ -210,30 +232,11 @@ class RecipeDetails extends React.Component {
     metaKeywords = metaKeywords.join(',');
 
     const metaDescription = `Công Thức Nấu Ăn (Recipe): ${name} (${author}) - ${description}`;
-    let isAddToCart = false;
-    //console.log('this is test:'+isAddToCart);
-    ingredients.forEach((ingredient) => {
-      if (ingredient.product && cart.has(ingredient.product.id)) {
-        isAddToCart = true;
-      }
-    });
-
     function isOutOfStock (availableQuantity, published) {
       return !isProductAvailable(availableQuantity) || !published;
     }
-
-    // if (!isAddToCart) {
-    //   ingredients.forEach((ingredient) => {
-    //     if (ingredient.product && !isOutOfStock(ingredient.product.availableQuantity, ingredient.product.published)) {
-    //       productsToAdd.push({
-    //         productId: ingredient.product.id,
-    //         quantity: ingredient.quantity,
-    //       });
-    //     }
-    //   });
-    // }
-    
-    function isDisableButton () {
+    function isFullAdd () {
+      if (productsToAdd.length === 0) { return true; }
       const availableProduct = [];
       ingredients.forEach((ingredient) => {
         if (ingredient.product && !isOutOfStock(ingredient.product.availableQuantity, ingredient.product.published)) {
@@ -242,8 +245,32 @@ class RecipeDetails extends React.Component {
           });
         }
       });
-      return availableProduct.map(Product => cart.has(Product.productId)).includes(false);
+      return !availableProduct.map(Product => cart.has(Product.productId)).includes(false);
     }
+    function disableCheckBoxAll () {
+      let temp=0;
+      const availableProduct = [];
+      let check=false
+      
+      ingredients.forEach((ingredient) => {
+        if(ingredient.product && cart.has(ingredient.product.id))
+        temp++;
+        if (ingredient.product && !isOutOfStock(ingredient.product.availableQuantity, ingredient.product.published)) {
+          availableProduct.push({
+            productId: ingredient.product.id,
+          });
+        }
+      });
+      
+    
+      console.log(availableProduct.length-temp-productsToAdd.length)
+      if(availableProduct.length-temp-productsToAdd.length  > 0)
+      return true
+      
+      return check
+    }
+   
+
     return (
       <div className={classes}>
 
@@ -322,13 +349,24 @@ class RecipeDetails extends React.Component {
                     cast="success"
                     className={styles.addAllToCartButton}
                     size="small"
-                    disabled={this.state.temp === 0 ?true :false  || !isDisableButton() }
+                    disabled={this.state.isEmptyCheck || isFullAdd()}
                     onClick={() => { addProductsToCart(productsToAdd); productsToAdd.length = 0; }}
                   >
                     <FormattedMessage {...messages.addToCart} />
                   </Button>
                 </div>
+
               )}
+                       
+         
+              { disableCheckBoxAll() && (
+                <div><Input
+                  name="checkAll"
+                  type="checkbox"
+                  //onChange={() => toggleCheckbox()}
+                  onChange={this.setNewNumber}
+                />Check All</div>
+               )}
               <table className={styles.ingredientsList}>
                 <tbody>
                   { ingredients
@@ -339,11 +377,10 @@ class RecipeDetails extends React.Component {
                           locale={locale}
                           productsToAdd={productsToAdd}
                           cart={cart}
-                          thisistest={this.remove}
-                          // {this.setNewNumber}
+                          checkEmpty={this.checkEmpty}
+                          data={this.state.data}
                         />
-                      )
-                    )
+                      ))
                   }
                 </tbody>
               </table>
@@ -389,4 +426,5 @@ class RecipeDetails extends React.Component {
     );
   }
 }
+
 export default RecipeDetails;
