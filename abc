@@ -1,430 +1,265 @@
-/**
-*
-* RecipeDetails
-*
-*/
+// đ \u20AB
+var GoogleSpreadsheet = require('google-spreadsheet');
+var async = require('async');
 
-import React from 'react';
-import Helmet from 'react-helmet';
-import classnames from 'classnames/bind';
-import { FormattedMessage } from 'react-intl';
-import { IconCartHappy } from 'components/Icons';
-import TagOos from 'components/TagOos';
-import {
-  DebugHelper,
-  Container,
-  Row,
-  Col,
-  CoverPhoto,
-  Input,
-  Button,
-} from 'components/Basement';
-import EntityAuthor from 'components/EntityAuthor';
-import EntityDescription from 'components/EntityDescription';
-import Permalink from 'components/Permalink';
-import Fblike from 'components/Fblike';
-import {
-  isProductAvailable,
-} from 'app/utils';
-import messages from './messages';
-import styles from './styles.styl';
+// spreadsheet key is the long id in the sheets URL
+var doc = new GoogleSpreadsheet('1SUfqrMGrN4qFTz3ibsBGgwKEl4E4YAdL5p1Ka6J7XQ0');
+var sheet;
+var numeral = require('numeral');
+var array = [];
+var arrayColumn = [];
+var objWeek = {}
+var objWeekDefine = {}
+var ColumnCount = 0;
+var S = require('string');
 
-const cx = classnames.bind(styles);
-const debug = new DebugHelper('components/RecipeDetails');
+var arrayObjWeek = [];
+var isNumber = require('is-number');
+//min_col = 1 is a col week
+var min_col = 2;
+var max_col = 0;
+var max_row = 200;
 
-const Ingredient = (props) => {
-  function toggleCheckbox (productId, quantity) {
-    if (productId) {
-      let indexOfProduct = -1;
-      productsToAdd.forEach((product, index) => {
-        if (product.productId === productId) {
-          indexOfProduct = index;
-        }
-      });
-      if (indexOfProduct === -1) {
-        productsToAdd.push({ productId, quantity });
-      } else {
-        productsToAdd.splice(indexOfProduct, 1);
-      }
-    }
-    checkEmpty();
-  }
+async.series([
+  function setAuth(step) {
+    var creds = require('./client_id.json');
+    doc.useServiceAccountAuth(creds, step);
+  },
+  function getInfoAndWorksheets(step) {
+    doc.getInfo(function (err, info) {
+      console.log('Loaded doc: ' + info.title + ' by ' + info.author.email);
+      sheet = info.worksheets[1];
+      console.log('sheet 1: ' + sheet.title + ' ' + sheet.rowCount + 'x' + sheet.colCount);
+      ColumnCount = sheet.rowCount;
+      max_col =5// sheet.colCount;
+      step();
+    });
+  },
 
-  const { ingredient, locale, productsToAdd, cart, checkEmpty, data } = props;
-  const {
-    displayQuantity,
-    text,
-    text_vn: textVn,
-    product = {},
-    quantity,
-  } = ingredient;
+  function getWeeks(step) {
+    sheet.getCells({
+      'min-col': min_col,
+      'max-col': max_col,
+      'max-row': max_row,
+      'return-empty': true,
+    }, function (err, cells) {
+      for (var i = min_col; i <= max_col; i++)
 
-  const {
-    id: productId,
-    name: productName,
-    availableQuantity,
-    published,
-  } = product;
-  const isAvailable = isProductAvailable(availableQuantity);
-  const outOfStock = !isAvailable || !published;
-  const ingredientName = locale === 'vi'
-    ? (textVn || text)
-    : text;
-  const thumbnail = product['thumbnail@2x'];
-  const thumbnailUrl = thumbnail && thumbnail[0] && thumbnail[0].url;
-  const isAdded = productsToAdd.map(products => products.productId).includes(productId);
-  console.log("isAdder  "+isAdded +"data"+ data)
-  return (
-    <tr className={styles.ingredientsItem}>
-      <td>
-        { productId && cart.has(productId) &&
-          <span className={styles.ingredientStatus}>
-            <IconCartHappy height={20} width={20} />
-          </span>
-        }
-        { productId && !cart.has(productId) && !outOfStock && !data &&
-          <Input
-            name={productId}
-            type="checkbox"
-            defaultChecked={isAdded}
-            className="inline"
-            onChange={() => toggleCheckbox(productId, quantity)}
-          />
-        }
-        { productId && !cart.has(productId) && !outOfStock && data &&
-          <Input
-            name={productId}
-            type="checkbox"
-            defaultChecked
-            className="inline"
-            onChange={() => toggleCheckbox(productId, quantity)}
-          />
-        }
-      </td>
-      <td className={styles.ingredientQuantity}>
-        {displayQuantity || '+'}
-      </td>
-      <td
-        className={styles.ingredientName}
-        colSpan={!productId ? '2' : '1'}
-      >
-        { ingredientName }
-        <br />
-        {productId && outOfStock &&
-        <TagOos className={styles.outOfStockTag} />
-        }
-      </td>
-      {productId && (
-        <td>
-          <Permalink
-            deeplink={`product::${productId}`}
-            name={name}
-            className={styles.ingredientProduct}
-          >
-            { thumbnailUrl &&
-              <CoverPhoto
-                height={146}
-                src={thumbnailUrl}
-                alt={productName}
-                ratio="3_2"
-              />
+        cells.forEach(element => {
+          if (element.col == i) {
+
+            // if (element.value.split("\u20AB").length > 1) {
+            //   var a = ''
+            //   element.value.split("\u20AB").forEach(element => {
+            //     a += element
+            //   });
+            //   array.push(S(a).toFloat())
+            // }
+            // else {
+            //   if (element.value.split("%").length > 1)
+            //     array.push(Number(S(element.value).slugify()) / 100)
+            //     else
+            //       array.push(0)
+            // }
+
+            // array.push(element.numericValue)
+
+            // array.push(element.numericValue)
+
+            // if (element.value != '' && element.numericValue) {
+
+            //   if ((element.value.split('-').length > 1)) {
+            //     if ((element.value.split('-').length > 2))
+            //       array.push(element.value)
+            //     else
+            //       if (element.value.split('%').length > 1)
+            //         array.push(-Number(S(element.value).slugify() / 100))
+            //       else
+            //         array.push(-Number(S(element.value).slugify()))
+            //   }
+            //   else {
+            //     if (element.value.split('%').length > 1)
+            //       array.push(Number(S(element.value).slugify()) / 100)
+            //     else {
+            //       // đ 
+            //       array.push(Number(S(element.value).slugify().s))
+            //     }
+            //   }
+            // }
+
+            if (element.value != '' && element.numericValue) {
+              if (element.value.split('%').length > 1)
+              array.push(Number(S(element.value).slugify()) / 100)
+              else
+                array.push(numeral(S(element.value).replaceAll('.', ' ').replaceAll(',', '.').s).value())
             }
-          </Permalink>
-        </td>
-      )}
-    </tr>
-  );
-};
-
-class RecipeDetails extends React.Component {
-  constructor (props) {
-    super(props);
-    this.checkEmpty = this.checkEmpty.bind(this);
-    this.setNewNumber = this.setNewNumber.bind(this)
-    this.state = {
-      isEmptyCheck: false,
-      data: false,
-      button:false,
-    };
-  }
-
-  componentWillMount () {
-    const {
-      ingredients,
-      productsToAdd,
-      cart,
-    } = this.props;
-    function isOutOfStock (availableQuantity, published) {
-      return !isProductAvailable(availableQuantity) || !published;
-    }
-    ingredients.forEach((ingredient) => {
-      if (ingredient.product && !cart.has(ingredient.product.id) && ingredient.product && !isOutOfStock(ingredient.product.availableQuantity, ingredient.product.published)) {
-        productsToAdd.push({
-          productId: ingredient.product.id,
-          quantity: ingredient.quantity,
+            else
+              array.push(0)
+          }
         });
+
+      step();
+    });
+  },
+  function getArrayColum(step) {
+    sheet.getCells({
+      'min-col': 1,
+      'max-col': 1,
+      'min-row': 1,
+      'max-row': max_row,
+      'return-empty': true,
+    }, function (err, cells) {
+      cells.forEach(element => {
+        //colum name
+        if (element.value != '') {
+          if (element.value == 1)
+            arrayColumn.push('week')
+          else
+        // arrayColumn.push(S(element.value).stripPunctuation().stripLeft().replaceAll(' ', '_').s);
+        
+           arrayColumn.push(S(element.value).replaceAll('-', ' ').stripLeft().replaceAll(' ', '_').s)//strip("$", "%", "#", "(", ")", "/", ".", "-", "+", ">", "4", "13", "12", "11").trimLeft().replaceAll(' ', '-').s)
+        }
+        else
+          arrayColumn.push(0)
+      });
+      // console.log(arrayColumn)
+      step();
+    });
+  },
+  function workingWithCells(step) {
+    // get colum name ->metabase
+
+    let i = 0;
+    console.log(array.length)
+    console.log(arrayColumn.length)
+    arrayColumn.forEach(element => {
+      if (element != 0)
+        objWeekDefine[element] = Number
+      i++
+    });
+    objWeekDefine.Week_End_On = Date
+    // var temp = 0;
+    // for (let t = min_col; t <= max_col; t++) {
+    //   //  console.log('Array before push', arrayObjWeek);
+
+    //   arrayColumn.forEach(element => {
+    //     if (element != 0)
+    //       objWeek[element] = array[temp]
+    //     temp++
+    //   });
+       // objWeek.Week_End_On = '12'
+
+    //   //console.log('Obj week', objWeek);
+    //   var copy = Object.assign({}, objWeek);
+    //   if (copy.week != 0)
+    //     arrayObjWeek.push(copy)
+    //   //console.log('Array right after push', arrayObjWeek);
+    // }
+    let te = 0;
+    console.log('aa', array.length)
+    for (let y = 0; y < array.length; y++) {
+      if (te != arrayColumn.length - 1) {
+        //console.log('a', arrayColumn[te], te)
+        if (arrayColumn[te] != 0) {
+          //console.log('b', arrayColumn[te])
+          objWeek[arrayColumn[te]] = array[y]
+
+        }
+        te++
+      } else {
+        console.log('b', te)
+        te = 0;
+        var copy = Object.assign({}, objWeek);
+        if (copy.week != 0)
+          arrayObjWeek.push(copy)
+
       }
-    });
-  }
-  checkEmpty () {
-    const {
-      productsToAdd,
-    } = this.props;
-    
-    let isEmpty = false;
-    if (productsToAdd.length === 0) { isEmpty = true; }
-    this.setState({ isEmptyCheck: isEmpty });
-  }
-  setNewNumber() {
-    const {
-      ingredients,
-      productsToAdd,
-      cart,
-      addProductsToCart,
-    } = this.props;
-    function isOutOfStock (availableQuantity, published) {
-      return !isProductAvailable(availableQuantity) || !published;
+
+
     }
-    productsToAdd.length=0;
-        ingredients.forEach((ingredient) => {
-          if (ingredient.product && !cart.has(ingredient.product.id) && ingredient.product && !isOutOfStock(ingredient.product.availableQuantity, ingredient.product.published)) {
-            productsToAdd.push({
-              productId: ingredient.product.id,
-              quantity: ingredient.quantity,
-            });
-          }
+
+
+
+
+
+    // orm.connect("mysql://root:12345@localhost/metaBaseTest", function (err, db) {
+    //     if (err) throw err;
+    //       var Week = db.define("Week14",objWeekDefine);
+    //       Week.createAsync(objWeek)
+    //       .then(function(results) {
+    //       // console.log("done"+objWeek)
+    //       });
+    //      // add the table to the database
+
+    //     });
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    var orm = require("orm");
+    var countWeek = 20;
+    orm.connect("mysql://root:12345@localhost/myTestData", function (err, db) {
+      if (err) throw err;
+      var Week = db.define("Weeks", objWeekDefine);
+      db.drop(function (err) {
+        if (err) throw err;
+      });
+    ///////////////////////////////////////////////////////////////
+
+
+
+    //number week  need remove
+    //remove at number week 
+    //add week array week
+
+    // for (let i = 1; i <=20 ; i++) {
+    //   Week.find({ Week: arrayObjWeek[arrayObjWeek.length-i].week }).remove(function (err) {
+    //    //  Does gone..
+    //    });
+
+    // }
+
+      db.sync(function (err) {
+        if (err) throw err;
+        // add a row to the person table
+        Week.create(arrayObjWeek, function (err) {
+          if (err) throw err;
+          //loop 50 week lasted
         });
-        console.log("this is test"+productsToAdd.length)
-      this.setState({data: !this.state.data , isEmptyCheck  :false})
-
-   }
-  render () {
-    debug('render');
-    const classes = cx({
-      recipeDetails: true,
+      });
+      //  db.close();
     });
-    const {
-    name,
-    description = '',
-    images,
-    author,
-    ingredients,
-    preparations,
-    locale,
-    // serve,
-    addProductsToCart,
-    productsToAdd,
-    cart,
-    checkEmpty,
-  } = this.props;
-  
-    const photoUrl = images && images[0] && images[0].url;
 
-    debug('ingredientName', ingredients);
+    //   var orm = require('orm');
 
-    const metaTitle = `${name}`;
-    let metaKeywords = ingredients
-    .map(ingredient => `${ingredient.text},${ingredient.text_vn}`);
+    //  orm.connectAsync('mysql://root:12345@localhost/myTestData')
+    //    .then(function(db) {
+    //        var Week = db.define("Weeks", objWeekDefine);
+    //        Week.createAsync(arrayObjWeek)
+    //              .then(function(results) {
+    //              console.log("done")
+    //              });
+    //    })
+    //    .catch(function(err) {
+    //       console.error('Connection error: ' + err);
+    //    });
 
-    metaKeywords.push('công thức nấu ăn');
-    metaKeywords.push('cooking');
-    metaKeywords.push('recipe');
-    metaKeywords = metaKeywords.join(',');
 
-    const metaDescription = `Công Thức Nấu Ăn (Recipe): ${name} (${author}) - ${description}`;
-    function isOutOfStock (availableQuantity, published) {
-      return !isProductAvailable(availableQuantity) || !published;
-    }
-    function isFullAdd () {
-      if (productsToAdd.length === 0) { return true; }
-      const availableProduct = [];
-      ingredients.forEach((ingredient) => {
-        if (ingredient.product && !isOutOfStock(ingredient.product.availableQuantity, ingredient.product.published)) {
-          availableProduct.push({
-            productId: ingredient.product.id,
-          });
-        }
-      });
-      return !availableProduct.map(Product => cart.has(Product.productId)).includes(false);
-    }
-    function disableCheckBoxAll () {
-      let temp=0;
-      const availableProduct = [];
-      let check=false
-      
-      ingredients.forEach((ingredient) => {
-        if(ingredient.product && cart.has(ingredient.product.id))
-        temp++;
-        if (ingredient.product && !isOutOfStock(ingredient.product.availableQuantity, ingredient.product.published)) {
-          availableProduct.push({
-            productId: ingredient.product.id,
-          });
-        }
-      });
-      
-    
-      console.log(availableProduct.length-temp-productsToAdd.length)
-      if(availableProduct.length-temp-productsToAdd.length  > 0)
-      return true
-      
-      return check
-    }
-   
 
-    return (
-      <div className={classes}>
+    // }
+    // var orm = require("orm");
+    // orm.connect("mysql://root:12345@localhost/metaBaseTest", function (err, db) {
+    //     if (err) throw err;
+    //       var Week = db.define("Week14",objWeekDefine);
+    //       Week.createAsync(arrayObjWeek)
+    //       .then(function(results) {
+    //       // console.log("done"+objWeek)
+    //       });
+    //      // add the table to the database
 
-        <Helmet title={metaTitle}>
-          <meta name="description" content={metaDescription} />
-          <meta name="keywords" content={metaKeywords} />
-          <meta name="og:title" content={`chopp.vn | ${metaTitle}`} />
-          <meta name="og:description" content={metaDescription} />
-          { photoUrl &&
-            <meta name="og:image" content={photoUrl} />
-          }
-        </Helmet>
-
-        <Container centered>
-          <Row>
-            <Col desktop={12}>
-              <h4 className={styles.heading}>{name}</h4>
-            </Col>
-          </Row>
-
-          <Row className={styles.socialActions}>
-            <Col desktop={12}>
-              <Fblike />
-            </Col>
-          </Row>
-
-          <Row className={styles.introduction}>
-            <Col
-              desktop={4}
-              tablet={6}
-              mobile={12}
-              className={styles.preface}
-            >
-              {
-                author && <EntityAuthor text={`—${author}`} />
-              }
-              {
-                description && (
-                  <EntityDescription>
-                    <br />
-                    {description}
-                  </EntityDescription>
-                )
-              }
-            </Col>
-
-            { photoUrl && (
-              <Col
-                desktop={6}
-                tablet={6}
-                mobile={12}
-              >
-                <CoverPhoto
-                  src={photoUrl}
-                  alt={name}
-                  className={styles.photo}
-                  ratio="3_2"
-                />
-              </Col>
-            )}
-          </Row>
-
-          <Row className={styles.details}>
-            <Col
-              desktop={4}
-              tablet={6}
-              mobile={12}
-              className={styles.ingredients}
-            >
-              { ingredients.length && (
-                <div className={styles.headerWrapper}>
-                  <h5 className={styles.subHeading}>
-                    <FormattedMessage {...messages.ingredientHeading} />
-                  </h5>
-                  <Button
-                    cast="success"
-                    className={styles.addAllToCartButton}
-                    size="small"
-                    disabled={this.state.isEmptyCheck || isFullAdd()}
-                    onClick={() => { addProductsToCart(productsToAdd); productsToAdd.length = 0; }}
-                  >
-                    <FormattedMessage {...messages.addToCart} />
-                  </Button>
-                </div>
-
-              )}
-                       
-         
-              { disableCheckBoxAll() && (
-                <div><Input
-                  name="checkAll"
-                  type="checkbox"
-                  //onChange={() => toggleCheckbox()}
-                  onChange={this.setNewNumber}
-                />Check All</div>
-               )}
-              <table className={styles.ingredientsList}>
-                <tbody>
-                  { ingredients
-                      .map((ingredient, i) => (
-                        <Ingredient
-                          ingredient={ingredient}
-                          key={i}
-                          locale={locale}
-                          productsToAdd={productsToAdd}
-                          cart={cart}
-                          checkEmpty={this.checkEmpty}
-                          data={this.state.data}
-                        />
-                      ))
-                  }
-                </tbody>
-              </table>
-            </Col>
-
-            <Col
-              desktop={8}
-              tablet={6}
-              mobile={12}
-              className={styles.preparations}
-            >
-              <div className={styles.headerWrapper}>
-                { preparations.length > 0 && (
-                  <h5 className={styles.subHeading}>
-                    <FormattedMessage {...messages.instructionHeading} />
-                  </h5>
-                )}
-              </div>
-              <ul className={styles.preparationsList}>
-                { preparations.map((step, i) => (
-                  <li className={styles.preparationsItem} key={i}>
-                    {
-                      locale === 'vi'
-                        ? (step.text_vn || step.text)
-                        : step.text
-                    }
-                  </li>
-                ))}
-              </ul>
-
-              <div className={styles.socialComments}>
-                <div
-                  className="fb-comments"
-                  data-numposts="5"
-                  data-width="100%"
-                ></div>
-              </div>
-            </Col>
-          </Row>
-
-        </Container>
-      </div>
-    );
+    //     });
+    console.log(arrayObjWeek)
+    step();
   }
-}
-
-export default RecipeDetails;
+], function (err) {
+  if (err) {
+    console.log('Error: ' + err);
+  }
+});
